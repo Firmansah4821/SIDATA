@@ -363,7 +363,7 @@ export default function AdminTable({ records, activeType, loading, onExportAllBy
             <table className="w-full border-collapse" style={{ minWidth: `${tableMinWidth}px` }}>
               <thead>
                 <tr className="border-b border-border bg-card">
-                  <th className={`${thClass} text-center w-[52px]`}>No</th>
+                  <th className={`${thClass} w-[52px]`}>No</th>
                   {columns.map(col => (
                     <th key={col.id} className={thClass}>{col.label}</th>
                   ))}
@@ -397,7 +397,7 @@ export default function AdminTable({ records, activeType, loading, onExportAllBy
                         }`}
                         title={item.conflict_flag ? `Bentrok jadwal: ${item.conflict_info || ''}` : undefined}
                       >
-                        <td className="px-4 py-3.5 text-sm text-center text-muted-foreground tabular-nums">
+                        <td className="px-4 py-3.5 text-sm text-muted-foreground tabular-nums align-top">
                           {safePage * PAGE_SIZE + idx + 1}
                         </td>
                         {columns.map(col => {
