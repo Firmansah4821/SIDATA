@@ -16,9 +16,10 @@ interface AdminTableProps {
   onExportAllExcelByType?: (type: DataType) => void;
   onDelete: (record: SidataRecord) => void;
   onEdit?: (record: SidataRecord) => void;
+  searchQuery?: string;
 }
 
-export default function AdminTable({ records, activeType, loading, onViewDetail, onExportAllByType, onExportAllExcelByType, onDelete, onEdit }: AdminTableProps) {
+export default function AdminTable({ records, activeType, loading, onViewDetail, onExportAllByType, onExportAllExcelByType, onDelete, onEdit, searchQuery }: AdminTableProps) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -43,6 +44,12 @@ export default function AdminTable({ records, activeType, loading, onViewDetail,
     setPage(0);
     setSearch('');
   }, [activeType]);
+
+  // Keep table search in sync with the global topbar search pill
+  useEffect(() => {
+    setSearch(searchQuery ?? '');
+    setPage(0);
+  }, [searchQuery, activeType]);
 
   // Build dropdown options from existing records (distinct, sorted)
   const filterOptions = useMemo(() => {

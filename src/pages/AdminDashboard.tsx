@@ -52,6 +52,7 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
   const [kalenderType, setKalenderType] = useState<DataType>('surat_masuk');
   const [kalenderLoading, setKalenderLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [topbarSearch, setTopbarSearch] = useState('');
 
   const [detailRecord, setDetailRecord] = useState<SidataRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SidataRecord | null>(null);
@@ -475,34 +476,7 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
-        <AppHeader
-          isAdmin={true}
-          currentUser={displayName}
-          avatarUrl={auth.profile?.avatar_url}
-          onToggleSidebar={() => {}}
-          onLogout={() => {}}
-        />
-        <div className="flex flex-1 overflow-hidden">
-          <main className="flex-1 overflow-y-auto">
-            <DashboardSkeleton />
-          </main>
-        </div>
-        <SidataToast />
-      </div>
-    );
-  }
-
-  return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
-      <AppHeader
-        isAdmin={true}
-        currentUser={displayName}
-        avatarUrl={auth.profile?.avatar_url}
-        onToggleSidebar={() => setSidebarVisible(!sidebarVisible)}
-        onLogout={handleLogout}
-      />
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="h-screen w-screen flex overflow-hidden bg-background">
         <Sidebar
           visible={sidebarVisible}
           isAdmin={true}
@@ -511,28 +485,81 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
           activeLaporanType={laporanType}
           submenuOpen={submenuOpen}
           laporanSubmenuOpen={laporanSubmenuOpen}
-          onToggleSubmenu={() => setSubmenuOpen(!submenuOpen)}
-          onToggleLaporanSubmenu={() => setLaporanSubmenuOpen(!laporanSubmenuOpen)}
+          onToggleSubmenu={() => {}}
+          onToggleLaporanSubmenu={() => {}}
           onDashboard={() => {}}
-          onSelectType={(type) => { setInputType(type); setView('admin-input'); setSubmenuOpen(false); closeSidebarOnMobile(); }}
-          onSelectLaporanType={(type) => { setLaporanType(type); setView('admin-laporan'); setLaporanSubmenuOpen(false); closeSidebarOnMobile(); }}
-          onAdminDashboard={() => { setView('admin-dashboard'); closeSidebarOnMobile(); }}
-          onProfil={() => { setView('admin-profil'); closeSidebarOnMobile(); }}
-          onKalender={() => { handleOpenKalender(); closeSidebarOnMobile(); }}
+          onSelectType={() => {}}
+          onSelectLaporanType={() => {}}
+          onAdminDashboard={() => {}}
         />
-        {sidebarVisible && (
-          <div className="fixed inset-0 bg-foreground/30 z-[998] md:hidden" onClick={() => setSidebarVisible(false)} />
-        )}
-        <main className="flex-1 overflow-y-auto p-6">
+        <div className="relative flex-1 flex flex-col overflow-hidden min-w-0">
+          <div aria-hidden="true" className="topbar-wave pointer-events-none absolute top-0 right-0 h-[220px] w-[65%] z-0" />
+          <AppHeader
+            isAdmin={true}
+            currentUser={displayName}
+            avatarUrl={auth.profile?.avatar_url}
+            onToggleSidebar={() => {}}
+            onLogout={() => {}}
+          />
+          <div className="flex-1 overflow-y-auto relative z-10">
+            <DashboardSkeleton />
+          </div>
+        </div>
+        <SidataToast />
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-screen w-screen flex overflow-hidden bg-background">
+      <Sidebar
+        visible={sidebarVisible}
+        isAdmin={true}
+        activeView={view}
+        activeInputType={inputType}
+        activeLaporanType={laporanType}
+        submenuOpen={submenuOpen}
+        laporanSubmenuOpen={laporanSubmenuOpen}
+        onToggleSubmenu={() => setSubmenuOpen(!submenuOpen)}
+        onToggleLaporanSubmenu={() => setLaporanSubmenuOpen(!laporanSubmenuOpen)}
+        onDashboard={() => {}}
+        onSelectType={(type) => { setInputType(type); setView('admin-input'); setSubmenuOpen(false); closeSidebarOnMobile(); }}
+        onSelectLaporanType={(type) => { setLaporanType(type); setView('admin-laporan'); setLaporanSubmenuOpen(false); closeSidebarOnMobile(); }}
+        onAdminDashboard={() => { setView('admin-dashboard'); closeSidebarOnMobile(); }}
+        onProfil={() => { setView('admin-profil'); closeSidebarOnMobile(); }}
+        onKalender={() => { handleOpenKalender(); closeSidebarOnMobile(); }}
+      />
+      {sidebarVisible && (
+        <div className="fixed inset-0 bg-foreground/30 z-[998] md:hidden" onClick={() => setSidebarVisible(false)} />
+      )}
+      <div className="relative flex-1 flex flex-col overflow-hidden min-w-0">
+        <div aria-hidden="true" className="topbar-wave pointer-events-none absolute top-0 right-0 h-[220px] w-[65%] z-0" />
+        <AppHeader
+          isAdmin={true}
+          currentUser={displayName}
+          avatarUrl={auth.profile?.avatar_url}
+          onToggleSidebar={() => setSidebarVisible(!sidebarVisible)}
+          onLogout={handleLogout}
+          onSearchChange={setTopbarSearch}
+          onSearchSubmit={(q, type) => {
+            setTopbarSearch(q);
+            if (type) setLaporanType(type);
+            setLaporanSubmenuOpen(false);
+            setView('admin-laporan');
+            closeSidebarOnMobile();
+          }}
+          searchHint="Tekan Enter untuk mencari di Laporan"
+        />
+        <main className="flex-1 overflow-y-auto p-6 relative z-10">
           {view === 'admin-dashboard' && (
             <div className="animate-fade-in">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-primary" />
+              <div className="flex items-center gap-3.5 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+                  <BarChart3 className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-foreground">Dashboard Admin</h2>
-                  <p className="text-sm text-muted-foreground">Kelola dan pantau semua data</p>
+                  <h2 className="text-[26px] leading-tight font-extrabold text-foreground">Dashboard Admin</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">Kelola dan pantau semua data</p>
                 </div>
               </div>
               <StatsTable stats={stats} onSelectType={handleOpenModuleDashboard} />
@@ -568,6 +595,7 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
               records={records}
               activeType={laporanType}
               loading={laporanLoading}
+              searchQuery={topbarSearch}
               onViewDetail={handleViewDetail}
               onExport={handleExport}
               onExportExcel={handleExportExcel}
@@ -579,9 +607,9 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
           )}
           {view === 'admin-profil' && (
             <div className="animate-fade-in space-y-6">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <UserCircle className="w-5 h-5 text-primary" />
+              <div className="flex items-center gap-3.5 mb-2">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+                  <UserCircle className="w-6 h-6 text-white" />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-foreground">Profil & Kelola User</h2>

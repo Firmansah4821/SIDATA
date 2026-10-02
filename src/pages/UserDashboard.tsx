@@ -34,6 +34,7 @@ export default function UserDashboard({ auth }: UserDashboardProps) {
   const [loadedTypes, setLoadedTypes] = useState<Set<DataType>>(new Set());
   const [kalenderType, setKalenderType] = useState<DataType>('surat_masuk');
   const [kalenderLoading, setKalenderLoading] = useState(false);
+  const [topbarSearch, setTopbarSearch] = useState('');
 
   useIdleTimeout(async () => {
     await auth.signOut();
@@ -143,34 +144,7 @@ export default function UserDashboard({ auth }: UserDashboardProps) {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
-        <AppHeader
-          isAdmin={false}
-          currentUser={displayName}
-          avatarUrl={auth.profile?.avatar_url}
-          onToggleSidebar={() => {}}
-          onLogout={() => {}}
-        />
-        <div className="flex flex-1 overflow-hidden">
-          <main className="flex-1 overflow-y-auto">
-            <DashboardSkeleton />
-          </main>
-        </div>
-        <SidataToast />
-      </div>
-    );
-  }
-
-  return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
-      <AppHeader
-        isAdmin={false}
-        currentUser={displayName}
-        avatarUrl={auth.profile?.avatar_url}
-        onToggleSidebar={() => setSidebarVisible(!sidebarVisible)}
-        onLogout={handleLogout}
-      />
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="h-screen w-screen flex overflow-hidden bg-background">
         <Sidebar
           visible={sidebarVisible}
           isAdmin={false}
@@ -178,28 +152,88 @@ export default function UserDashboard({ auth }: UserDashboardProps) {
           activeInputType={inputType}
           submenuOpen={submenuOpen}
           laporanSubmenuOpen={false}
-          onToggleSubmenu={() => setSubmenuOpen(!submenuOpen)}
+          onToggleSubmenu={() => {}}
           onToggleLaporanSubmenu={() => {}}
-          onDashboard={() => { setView('dashboard'); closeSidebarOnMobile(); }}
-          onSelectType={(type) => { setInputType(type); setView('input'); setSubmenuOpen(false); closeSidebarOnMobile(); }}
+          onDashboard={() => {}}
+          onSelectType={() => {}}
           onSelectLaporanType={() => {}}
           onAdminDashboard={() => {}}
-          onProfil={() => { setView('profil'); closeSidebarOnMobile(); }}
-          onKalender={() => { handleOpenKalender(); closeSidebarOnMobile(); }}
         />
-        {sidebarVisible && (
-          <div className="fixed inset-0 bg-foreground/30 z-[998] md:hidden" onClick={() => setSidebarVisible(false)} />
-        )}
-        <main className="flex-1 overflow-y-auto p-6">
+        <div className="relative flex-1 flex flex-col overflow-hidden min-w-0">
+          <div aria-hidden="true" className="topbar-wave pointer-events-none absolute top-0 right-0 h-[220px] w-[65%] z-0" />
+          <AppHeader
+            isAdmin={false}
+            currentUser={displayName}
+            avatarUrl={auth.profile?.avatar_url}
+            onToggleSidebar={() => {}}
+            onLogout={() => {}}
+          />
+          <div className="flex-1 overflow-y-auto relative z-10">
+            <DashboardSkeleton />
+          </div>
+        </div>
+        <SidataToast />
+      </div>
+    );
+  }
+
+  const handleTopbarSearchSubmit = async (query: string, type?: DataType) => {
+    const target = type || kalenderType;
+    setTopbarSearch(query);
+    if (!type) return;
+    setKalenderType(target);
+    setView('kalender');
+    closeSidebarOnMobile();
+    if (!loadedTypes.has(target)) {
+      setKalenderLoading(true);
+      await loadTypeIfNeeded(target);
+      setKalenderLoading(false);
+    }
+  };
+
+  return (
+    <div className="h-screen w-screen flex overflow-hidden bg-background">
+      <Sidebar
+        visible={sidebarVisible}
+        isAdmin={false}
+        activeView={view}
+        activeInputType={inputType}
+        submenuOpen={submenuOpen}
+        laporanSubmenuOpen={false}
+        onToggleSubmenu={() => setSubmenuOpen(!submenuOpen)}
+        onToggleLaporanSubmenu={() => {}}
+        onDashboard={() => { setView('dashboard'); closeSidebarOnMobile(); }}
+        onSelectType={(type) => { setInputType(type); setView('input'); setSubmenuOpen(false); closeSidebarOnMobile(); }}
+        onSelectLaporanType={() => {}}
+        onAdminDashboard={() => {}}
+        onProfil={() => { setView('profil'); closeSidebarOnMobile(); }}
+        onKalender={() => { handleOpenKalender(); closeSidebarOnMobile(); }}
+      />
+      {sidebarVisible && (
+        <div className="fixed inset-0 bg-foreground/30 z-[998] md:hidden" onClick={() => setSidebarVisible(false)} />
+      )}
+      <div className="relative flex-1 flex flex-col overflow-hidden min-w-0">
+        <div aria-hidden="true" className="topbar-wave pointer-events-none absolute top-0 right-0 h-[220px] w-[65%] z-0" />
+        <AppHeader
+          isAdmin={false}
+          currentUser={displayName}
+          avatarUrl={auth.profile?.avatar_url}
+          onToggleSidebar={() => setSidebarVisible(!sidebarVisible)}
+          onLogout={handleLogout}
+          onSearchChange={setTopbarSearch}
+          onSearchSubmit={handleTopbarSearchSubmit}
+          searchHint="Data tidak ditemukan"
+        />
+        <main className="flex-1 overflow-y-auto p-6 relative z-10">
           {view === 'dashboard' && (
             <div className="animate-fade-in">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-primary" />
+              <div className="flex items-center gap-3.5 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+                  <BarChart3 className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-foreground">Dashboard</h2>
-                  <p className="text-sm text-muted-foreground">Ringkasan data pertanahan</p>
+                  <h2 className="text-[26px] leading-tight font-extrabold text-foreground">Dashboard</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">Ringkasan data pertanahan</p>
                 </div>
               </div>
               <StatsTable stats={stats} onSelectType={handleOpenModuleDashboard} />
@@ -226,13 +260,13 @@ export default function UserDashboard({ auth }: UserDashboardProps) {
           )}
           {view === 'profil' && (
             <div className="animate-fade-in">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <UserCircle className="w-5 h-5 text-primary" />
+              <div className="flex items-center gap-3.5 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+                  <UserCircle className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-foreground">Profil Saya</h2>
-                  <p className="text-sm text-muted-foreground">Kelola informasi profil Anda</p>
+                  <h2 className="text-[26px] leading-tight font-extrabold text-foreground">Profil Saya</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">Kelola informasi profil Anda</p>
                 </div>
               </div>
               {auth.user && (

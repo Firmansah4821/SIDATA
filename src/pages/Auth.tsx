@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Loader2, User, Lock, ArrowRight, ShieldCheck, AlertCircle, ChevronDown, UserCog } from 'lucide-react';
+import { Eye, EyeOff, Loader2, User, Lock, ArrowRight, AlertCircle, ChevronDown, UserCog } from 'lucide-react';
 import logoBima from '@/assets/logo-bima.png';
 
 interface AuthPageProps {
@@ -39,125 +39,90 @@ export default function AuthPage({ onSignIn }: AuthPageProps) {
     }
   };
 
-  const inputClass =
-    'w-full py-3.5 pl-12 pr-11 border border-input rounded-xl text-sm bg-card text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring/15 transition-all';
-
   return (
-    <div className="relative min-h-screen flex flex-col bg-background text-foreground overflow-hidden">
-      {/* Subtle land-parcel background pattern */}
-      <svg className="absolute inset-0 w-full h-full text-border/70 pointer-events-none" aria-hidden="true">
-        <defs>
-          <pattern id="login-parcels" width="280" height="280" patternUnits="userSpaceOnUse">
-            <g fill="none" stroke="currentColor" strokeWidth="1">
-              <path d="M-20 90 L60 40 L150 75 L220 20 L300 55" />
-              <path d="M60 40 L95 150 L30 210 L-20 170" />
-              <path d="M150 75 L185 180 L95 150" />
-              <path d="M220 20 L265 130 L185 180" />
-              <path d="M-20 250 L70 220 L95 150" />
-              <path d="M70 220 L160 260 L185 180" />
-              <path d="M265 130 L300 230 L230 270 L160 260" />
-              <path d="M-20 320 L60 300 L95 330" />
-            </g>
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#login-parcels)" />
-      </svg>
-      {/* Soft light wash for readability */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background/90 pointer-events-none" />
-
-      {/* Main content */}
-      <div className="relative flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          {/* Brand header */}
-          <div className="text-center mb-8">
+    <div className="login-bg min-h-screen w-full flex flex-col items-center justify-center p-4">
+      {/* Single stacked card: white brand block on top, navy login block below */}
+      <div className="w-full max-w-[404px] mx-auto animate-fade-in">
+        <div className="rounded-[22px] overflow-hidden shadow-[0_30px_70px_-28px_rgba(15,23,42,0.45)]">
+          {/* ── Brand (light) ── */}
+          <div className="bg-[#fffdf6] px-8 pt-8 pb-7 text-center">
             <img
               src={logoBima}
               alt="Logo Kabupaten Bima"
-              className="w-24 h-auto mx-auto mb-5 drop-shadow-md"
+              className="w-[100px] h-[100px] object-contain mx-auto"
             />
-            <h1 className="text-4xl font-extrabold tracking-tight text-foreground">SIDATA</h1>
-            <p className="text-lg font-bold text-foreground/80 mt-2">Sistem Informasi Data Pertanahan</p>
-            <p className="text-sm text-muted-foreground mt-1.5">Kantor Pertanahan Kab. Bima</p>
-            <div className="w-10 h-1 bg-primary rounded-full mx-auto mt-5" />
+            <h1 className="text-[40px] leading-none font-extrabold tracking-tight text-[#16233b] mt-3">SIDATA</h1>
+            <p className="text-[17px] font-bold text-[#16233b] mt-3">Sistem Informasi Data Pertanahan</p>
+            <p className="text-[13px] text-slate-500 mt-2">Kantor Pertanahan Kab. Bima</p>
           </div>
 
-          {/* Login card */}
-          <div className="bg-card/95 backdrop-blur-sm border border-border rounded-2xl shadow-2xl p-7 sm:p-8 animate-fade-in">
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label htmlFor="login-username" className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                  Username
-                </label>
-                <div className="relative">
-                  <span className="absolute left-0 top-0 h-full w-11 flex items-center justify-center border-r border-input text-muted-foreground pointer-events-none">
-                    <User className="w-4 h-4" />
-                  </span>
-                  <input
-                    id="login-username"
-                    type="text"
-                    value={username}
-                    onChange={e => setUsername(e.target.value)}
-                    className={inputClass}
-                    placeholder="Masukkan username"
-                    required
-                    autoComplete="username"
-                  />
-                </div>
+          {/* ── Login (navy) ── */}
+          <div className="login-panel px-7 pt-6 pb-7">
+            <p className="text-[11px] font-bold tracking-[0.28em] text-slate-400 mb-4">LOGIN</p>
+
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                  <User className="w-[17px] h-[17px]" />
+                </span>
+                <input
+                  id="login-username"
+                  type="text"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  className="login-input w-full h-12 pl-11 pr-4 rounded-xl text-sm transition-all"
+                  placeholder="Masukkan username"
+                  required
+                  autoComplete="username"
+                  aria-label="Username"
+                />
               </div>
 
-              <div>
-                <label htmlFor="login-password" className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <span className="absolute left-0 top-0 h-full w-11 flex items-center justify-center border-r border-input text-muted-foreground pointer-events-none">
-                    <Lock className="w-4 h-4" />
-                  </span>
-                  <input
-                    id="login-password"
-                    type={showPass ? 'text' : 'password'}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    className={inputClass}
-                    placeholder="Masukkan password"
-                    required
-                    minLength={6}
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPass(!showPass)}
-                    aria-label={showPass ? 'Sembunyikan password' : 'Tampilkan password'}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                  <Lock className="w-[17px] h-[17px]" />
+                </span>
+                <input
+                  id="login-password"
+                  type={showPass ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="login-input w-full h-12 pl-11 pr-11 rounded-xl text-sm transition-all"
+                  placeholder="Masukkan password"
+                  required
+                  minLength={6}
+                  autoComplete="current-password"
+                  aria-label="Password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  aria-label={showPass ? 'Sembunyikan password' : 'Tampilkan password'}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-300 transition-colors"
+                >
+                  {showPass ? <EyeOff className="w-[17px] h-[17px]" /> : <Eye className="w-[17px] h-[17px]" />}
+                </button>
               </div>
 
-              <div>
-                <label htmlFor="login-role" className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                  Masuk Sebagai
-                </label>
-                <div className="relative">
-                  <span className="absolute left-0 top-0 h-full w-11 flex items-center justify-center border-r border-input text-muted-foreground pointer-events-none">
-                    <UserCog className="w-4 h-4" />
-                  </span>
-                  <select
-                    id="login-role"
-                    value={role}
-                    onChange={e => setRole(e.target.value as 'admin' | 'operator')}
-                    className={`${inputClass} appearance-none cursor-pointer`}
-                  >
-                    <option value="admin">Admin</option>
-                    <option value="operator">Operator</option>
-                  </select>
-                  <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                </div>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                  <UserCog className="w-[17px] h-[17px]" />
+                </span>
+                <select
+                  id="login-role"
+                  value={role}
+                  onChange={e => setRole(e.target.value as 'admin' | 'operator')}
+                  className="login-input w-full h-12 pl-11 pr-10 rounded-xl text-sm appearance-none cursor-pointer transition-all"
+                  aria-label="Masuk sebagai"
+                >
+                  <option value="admin">Admin</option>
+                  <option value="operator">Operator</option>
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               </div>
 
               {error && (
-                <div className="flex items-start gap-2.5 p-3 rounded-xl text-sm font-medium bg-destructive/10 text-destructive" role="alert">
+                <div className="flex items-start gap-2.5 p-3 rounded-xl text-[13px] font-medium bg-red-500/15 text-red-200 border border-red-400/20" role="alert">
                   <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>{error}</span>
                 </div>
@@ -166,25 +131,15 @@ export default function AuthPage({ onSignIn }: AuthPageProps) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold uppercase tracking-wide hover:brightness-110 transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-primary/25"
+                className="login-button w-full h-12 rounded-xl text-sm font-bold uppercase tracking-[0.08em] mt-1 transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
                 Masuk
               </button>
             </form>
-
-            <div className="flex items-center justify-center gap-1.5 mt-6 pt-1 text-xs text-muted-foreground">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Akses sistem terlindungi
-            </div>
           </div>
         </div>
       </div>
-
-      {/* Page footer */}
-      <footer className="relative py-5 text-center text-xs text-muted-foreground">
-        © 2026 SIDATA <span className="mx-1.5">•</span> Sistem Informasi Data Pertanahan <span className="mx-1.5">•</span> Versi 1.0.0
-      </footer>
     </div>
   );
 }
