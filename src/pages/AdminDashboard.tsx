@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import html2pdf from 'html2pdf.js';
-import { DataType, SidataRecord, typeLabels, formFields } from '@/lib/sidata-config';
+import { DataType, SidataRecord, typeLabels } from '@/lib/sidata-config';
+import { exportPDF, buildPdfColumns, buildRecordPdfFileName } from '@/lib/pdf-export';
 import { loadRecords, loadRecordsByType, deleteRecord, addRecord, updateRecord, getStats, loadStatsOnly, recomputeConflictsForDate } from '@/lib/sidata-store';
 import { exportToExcel, exportSingleToExcel } from '@/lib/excel-export';
 import { logAudit } from '@/lib/audit-logger';
@@ -20,14 +20,6 @@ import ProfileSection from '@/components/sidata/ProfileSection';
 import { DashboardSkeleton } from '@/components/sidata/LoadingSkeleton';
 import { BarChart3, UserCircle } from 'lucide-react';
 import type { AuthState } from '@/hooks/useAuth';
-import {
-  buildFileDirectUrl,
-  buildFileOpenRedirectUrl,
-  escapeHtmlAttribute,
-  escapeHtmlText,
-  getCleanStorageFileName,
-  isImageFileUrl,
-} from '@/lib/file-link-utils';
 
 type AdminView = 'admin-dashboard' | 'admin-input' | 'admin-laporan' | 'admin-profil' | 'admin-module-dashboard' | 'admin-kalender';
 
@@ -195,212 +187,25 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
   };
 
   // ─── PDF Export Logic ───
-  const pdfTypeLabels: Record<DataType, string> = {
-    surat_masuk: "Laporan Surat Masuk",
-    surat_keluar: "Laporan Surat Keluar",
-    buku_tamu: "Laporan Buku Tamu",
-    inventaris_dokumen: "Laporan Inventaris Dokumen",
-    pengajuan_bpn: "Laporan Pengajuan BPN",
-    perjalanan_dinas: "Laporan Perjalanan Dinas",
-    agenda_rapat: "Laporan Agenda Rapat",
-    lembur: "Laporan Lembur",
-  };
+  // Shared helper lives in src/lib/pdf-export.ts (exportPDF) and is used by
+  // the toolbar export, the detail modal, and the AKSI green download button.
 
-  const buildFileContent = (val: any, _fieldId: string) => {
-    if (!val) return '-';
-
-    const fileArr: string[] = Array.isArray(val) ? val : [val];
-    const contents = fileArr
-      .map((v: string) => {
-        if (!v) return '';
-
-        if (v.startsWith('data:image')) {
-          return `<span style="font-size:11px;color:#1e40af;">🖼️ Foto (embedded)</span>`;
-        }
-
-        const directUrl = buildFileDirectUrl(v);
-        if (directUrl) {
-          const isImg = isImageFileUrl(directUrl);
-          const displayName = getCleanStorageFileName(directUrl);
-          const openUrl = buildFileOpenRedirectUrl(directUrl);
-          const icon = isImg ? '🖼️' : '📄';
-          return `<a href="${escapeHtmlAttribute(openUrl)}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#1e40af;text-decoration:underline;word-break:break-all;">${icon} ${escapeHtmlText(displayName)}</a>`;
-        }
-
-        return `<span style="font-size:11px;color:#000;">${escapeHtmlText(v)}</span>`;
-      })
-      .filter(Boolean)
-      .join('<br/>');
-
-    return contents || '-';
-  };
-
-  const buildTableForType = (type: DataType, items: SidataRecord[]) => {
-    const fields = (formFields[type] || []).filter(f => f.type !== 'html');
-    const getFieldLabel = (f: { id: string; label: string }) => {
-      if (f.id === 'foto_tamu') return 'Foto Tamu';
-      if (f.id === 'foto_perjalanan') return 'Foto Perjalanan';
-      if (f.id === 'foto_lembur') return 'Foto Dokumentasi';
-      return f.label;
-    };
-    // Adaptive sizing so EVERY table fits on A4 landscape (no A3 fallback)
-    const colCount = fields.length + 1; // +1 for NO
-    // Tier the density by column count
-    let fontSize: number, padding: string, filePadding: string, imgMaxW: number, imgMaxH: number;
-    if (colCount <= 7) {
-      fontSize = 11; padding = '7px 8px'; filePadding = '5px'; imgMaxW = 95; imgMaxH = 70;
-    } else if (colCount <= 10) {
-      fontSize = 9; padding = '4px 5px'; filePadding = '3px'; imgMaxW = 70; imgMaxH = 55;
-    } else {
-      // Very wide tables (e.g. lembur with 12+ cols) — squeeze further
-      fontSize = 8; padding = '3px 4px'; filePadding = '2px'; imgMaxW = 55; imgMaxH = 45;
-    }
-
-    const thCells = fields.map(f =>
-      `<th style="border:1px solid #ccc;padding:${padding};background:#1e40af;color:#fff;font-size:${fontSize}px;text-align:${f.type === 'file' ? 'center' : 'left'};word-break:break-word;">${getFieldLabel(f)}</th>`
-    ).join('');
-
-    const rows = items.map((item, idx) => {
-      const tdCells = fields.map(f => {
-        const val = item[f.id];
-        if (f.type === 'file') {
-          const content = buildFileContentSized(val, f.id, imgMaxW, imgMaxH, fontSize);
-          return `<td style="border:1px solid #ccc;padding:${filePadding};text-align:center;vertical-align:middle;">${content}</td>`;
-        }
-        return `<td style="border:1px solid #ccc;padding:${padding};font-size:${fontSize}px;color:#000;word-break:break-word;">${val || '-'}</td>`;
-      }).join('');
-      return `<tr><td style="border:1px solid #ccc;padding:${padding};font-size:${fontSize}px;text-align:center;color:#000;vertical-align:top;">${idx + 1}</td>${tdCells}</tr>`;
-    }).join('');
-
-    return `<table style="width:100%;border-collapse:collapse;table-layout:fixed;">
-      <thead><tr><th style="border:1px solid #ccc;padding:${padding};background:#1e40af;color:#fff;font-size:${fontSize}px;width:30px;text-align:center;">NO</th>${thCells}</tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
-  };
-
-  const buildFileContentSized = (val: any, _fieldId: string, _maxW: number, _maxH: number, fontSize: number) => {
-    if (!val) return '-';
-    const fileArr: string[] = Array.isArray(val) ? val : [val];
-    const contents = fileArr
-      .map((v: string) => {
-        if (!v) return '';
-        if (v.startsWith('data:image')) {
-          return `<span style="font-size:${fontSize - 1}px;color:#1e40af;">🖼️ Foto</span>`;
-        }
-        const directUrl = buildFileDirectUrl(v);
-        if (directUrl) {
-          const isImg = isImageFileUrl(directUrl);
-          const displayName = getCleanStorageFileName(directUrl);
-          const openUrl = buildFileOpenRedirectUrl(directUrl);
-          const icon = isImg ? '🖼️' : '📄';
-          return `<a href="${escapeHtmlAttribute(openUrl)}" target="_blank" rel="noopener noreferrer" style="font-size:${fontSize - 1}px;color:#1e40af;text-decoration:underline;word-break:break-all;">${icon} ${escapeHtmlText(displayName)}</a>`;
-        }
-        return `<span style="font-size:${fontSize - 1}px;color:#000;">${escapeHtmlText(v)}</span>`;
-      })
-      .filter(Boolean)
-      .join('<br/>');
-    return contents || '-';
-  };
-
-  const executePdfExport = async (htmlContent: string, fileName: string, _type?: DataType) => {
-    // Always use A4 landscape for consistency across all reports
-    const pdfFormat = 'a4';
-    // A4 landscape printable width ≈ 277mm; render at ~1100px for clean scaling
-    const rootWidth = 1100;
-    const iframe = document.createElement('iframe');
-    // Iframe must be tall enough for html2canvas to capture every row of the table.
-    iframe.style.cssText = `position:fixed;left:0;top:0;width:${rootWidth + 100}px;height:100vh;opacity:0;pointer-events:none;z-index:-1;border:none;`;
-    document.body.appendChild(iframe);
-
-    try {
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!iframeDoc) throw new Error('Cannot access iframe document');
-
-      iframeDoc.open();
-      iframeDoc.write(`<!DOCTYPE html>
-        <html><head><meta charset="utf-8">
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { background: #fff; color: #000; font-family: 'Times New Roman', serif; }
-          img { display: block; }
-          table { page-break-inside: auto; }
-          tr { page-break-inside: avoid; page-break-after: auto; }
-          thead { display: table-header-group; }
-        </style>
-        </head><body>
-          <div id="pdf-root" style="width:${rootWidth}px;padding:25px;background:#fff;">
-            ${htmlContent}
-          </div>
-        </body></html>`);
-      iframeDoc.close();
-
-      // Wait for layout to settle and fonts to apply before snapshotting
-      await new Promise<void>(r => setTimeout(r, 250));
-
-      const root = iframeDoc.getElementById('pdf-root');
-      if (!root) throw new Error('PDF root not found');
-
-      // Resize iframe to actual content height so html2canvas captures everything
-      const contentHeight = Math.max(root.scrollHeight, root.offsetHeight, 900);
-      iframe.style.height = `${contentHeight + 50}px`;
-      await new Promise<void>(r => setTimeout(r, 50));
-
-      await html2pdf().set({
-        margin: 8,
-        filename: fileName,
-        // Keep <a href> tags clickable in the generated PDF.
-        enableLinks: true,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 1.5, useCORS: true, allowTaint: true, logging: false, backgroundColor: '#ffffff', width: rootWidth, windowWidth: rootWidth, windowHeight: contentHeight + 50, scrollX: 0, scrollY: 0 },
-        pagebreak: { mode: ['css', 'legacy'] },
-        jsPDF: { unit: 'mm', format: pdfFormat, orientation: 'landscape' },
-      }).from(root).save();
-
-      showSidataToast('Laporan PDF berhasil diunduh', 'success');
-    } catch (err) {
-      console.error('PDF export error:', err);
-      showSidataToast('Gagal mengunduh PDF', 'error');
-    } finally {
-      if (iframe.parentNode) document.body.removeChild(iframe);
-    }
-  };
-
+  // Single-record PDF — AKSI green download button + detail-modal export.
+  // Filename: Laporan-<Menu>-<identitas record>.pdf
   const handleExport = async (item: SidataRecord) => {
     showSidataToast('Memproses PDF...', 'info');
-    const title = pdfTypeLabels[item.type];
-    const printDate = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const submitDate = item.submitted_at ? new Date(item.submitted_at).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '-';
-
-    const html = `
-      <h2 style="text-align:center;margin:20px 0 5px;font-size:16px;font-weight:bold;color:#000;">${title}</h2>
-      <p style="font-size:12px;margin:8px 0;color:#000;">Di cetak pada : ${printDate}</p>
-      <p style="font-size:12px;margin:0 0 15px;color:#000;">Data dikirim pada : ${submitDate}</p>
-      ${buildTableForType(item.type, [item])}
-      <div style="margin-top:30px;text-align:center;font-size:10px;color:#999;border-top:1px solid #ddd;padding-top:10px;">
-        © ${new Date().getFullYear()} Kantor Pertanahan Kabupaten Bima
-      </div>
-    `;
-    await executePdfExport(html, `${title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`, item.type);
-  };
-
+    await exportPDF(typeLabels[item.type], buildPdfColumns(item.type), [item], {
+      subtitle: 'submit',
+      fileName: buildRecordPdfFileName(item),
+    });
+  };  // Toolbar export — ALL records of the type, behaviour unchanged (Total data line).
   const handleExportByType = async (type: DataType) => {
     const items = records.filter(r => r.type === type);
     if (items.length === 0) { showSidataToast(`Tidak ada data ${typeLabels[type]} untuk diexport`, 'error'); return; }
     showSidataToast('Memproses PDF...', 'info');
-    const title = pdfTypeLabels[type];
-    const printDate = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-    const html = `
-      <h2 style="text-align:center;margin:20px 0 5px;font-size:16px;font-weight:bold;color:#000;">${title}</h2>
-      <p style="font-size:12px;margin:8px 0;color:#000;">Di cetak pada : ${printDate}</p>
-      <p style="font-size:12px;margin:0 0 15px;color:#000;">Total data : ${items.length} record</p>
-      ${buildTableForType(type, items)}
-      <div style="margin-top:30px;text-align:center;font-size:10px;color:#999;border-top:1px solid #ddd;padding-top:10px;">
-        © ${new Date().getFullYear()} Kantor Pertanahan Kabupaten Bima
-      </div>
-    `;
-    await executePdfExport(html, `${title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`, type);
+    await exportPDF(typeLabels[type], buildPdfColumns(type), items, { subtitle: 'total' });
   };
+
 
   const handleExportExcel = async (item: SidataRecord) => {
     try {

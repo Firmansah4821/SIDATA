@@ -98,14 +98,8 @@ function getRecordFiles(item: SidataRecord): { fieldId: string; label: string; u
   return result;
 }
 
-// Main document of a record: dokumen_surat when present, otherwise first uploaded file
-function getMainFile(item: SidataRecord) {
-  const files = getRecordFiles(item);
-  if (files.length === 0) return null;
-  return files.find(f => f.fieldId === 'dokumen_surat') || files[0];
-}
-
 // Download a storage file for real (blob fetch, fallback: open in new tab)
+// Works for every file type (jpg, png, pdf, xls, doc, …).
 async function downloadStorageFile(url: string, fileName: string) {
   try {
     const res = await fetch(url, { mode: 'cors' });
@@ -142,7 +136,7 @@ function buildPageList(current: number, total: number): (number | '…')[] {
   return items;
 }
 
-export default function AdminTable({ records, activeType, loading, onExportAllByType, onExportAllExcelByType, onDelete, onEdit, searchQuery }: AdminTableProps) {
+export default function AdminTable({ records, activeType, loading, onExport, onExportAllByType, onExportAllExcelByType, onDelete, onEdit, searchQuery }: AdminTableProps) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -385,7 +379,6 @@ export default function AdminTable({ records, activeType, loading, onExportAllBy
                   </tr>
                 ) : (
                   paged.map((item, idx) => {
-                    const mainFile = getMainFile(item);
                     const cellFiles = getRecordFiles(item);
                     return (
                       <tr
@@ -456,14 +449,9 @@ export default function AdminTable({ records, activeType, loading, onExportAllBy
                         <td className="px-4 py-3.5 text-center align-top">
                           <div className="flex gap-1.5 justify-center">
                             <button
-                              onClick={() => mainFile && downloadStorageFile(mainFile.url, mainFile.name)}
-                              disabled={!mainFile}
-                              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95 ${
-                                mainFile
-                                  ? 'bg-success/10 text-success hover:bg-success/20'
-                                  : 'bg-muted text-muted-foreground/40 cursor-not-allowed'
-                              }`}
-                              title={mainFile ? 'Unduh dokumen' : 'Tidak ada dokumen'}
+                              onClick={() => onExport(item)}
+                              className="w-8 h-8 rounded-full flex items-center justify-center bg-success/10 text-success hover:bg-success/20 transition-all active:scale-95"
+                              title="Unduh PDF"
                             >
                               <Download className="w-4 h-4" />
                             </button>
