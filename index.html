@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SIDATA - Sistem Informasi Data Pertanahan</title>
+    <meta name="description" content="Sistem Informasi Data Pertanahan Kabupaten Bima - Kelola surat masuk, buku tamu, inventaris dokumen, dan data pertanahan lainnya.">
+    <meta name="author" content="Kantor Pertanahan Kabupaten Bima" />
+    <meta name="theme-color" content="#2563eb" />
+
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SIDATA" />
+
+    <meta property="og:title" content="SIDATA - Sistem Informasi Data Pertanahan">
+    <meta property="og:description" content="Sistem Informasi Data Pertanahan Kabupaten Bima">
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9594dd9f-9aac-483f-8dfd-b54b5dbad5a4/id-preview-6fea8e40--59eafdbc-7e45-4b11-bffe-697c0540dbfc.lovable.app-1772983343059.png">
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SIDATA - Sistem Informasi Data Pertanahan">
+    <meta name="twitter:description" content="Sistem Informasi Data Pertanahan Kabupaten Bima">
+    <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9594dd9f-9aac-483f-8dfd-b54b5dbad5a4/id-preview-6fea8e40--59eafdbc-7e45-4b11-bffe-697c0540dbfc.lovable.app-1772983343059.png">
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
+  </body>
+</html>

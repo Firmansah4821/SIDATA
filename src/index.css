@@ -1,0 +1,203 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 97%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 174 72% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 20%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 174 72% 36%;
+
+    --radius: 0.625rem;
+
+    --header-from: 221 83% 53%;
+    --header-to: 224 76% 42%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 214 95% 96%;
+    --sidebar-accent-foreground: 221 83% 53%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 221 83% 53%;
+  }
+
+  .dark {
+    --background: 222 58% 9%;
+    --foreground: 210 40% 98%;
+    --card: 220 52% 13%;
+    --card-foreground: 210 40% 98%;
+    --popover: 220 52% 13%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 168 76% 42%;
+    --primary-foreground: 222 58% 9%;
+    --secondary: 219 45% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 219 45% 17%;
+    --muted-foreground: 215 22% 70%;
+    --accent: 219 45% 19%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 218 40% 22%;
+    --input: 218 40% 22%;
+    --ring: 168 76% 42%;
+    --header-from: 222 58% 9%;
+    --header-to: 160 70% 32%;
+    --sidebar-background: 222 60% 8%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 168 76% 42%;
+    --sidebar-primary-foreground: 222 58% 9%;
+    --sidebar-accent: 162 60% 18%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 218 40% 18%;
+    --sidebar-ring: 168 76% 42%;
+  }
+}}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+@layer utilities {
+  .header-gradient {
+    background: linear-gradient(100deg, hsl(222 58% 10%) 0%, hsl(200 70% 18%) 30%, hsl(176 70% 28%) 70%, hsl(150 65% 34%) 92%, hsl(80 70% 45%) 100%);
+  }
+
+  /* Force white text/icons in header for both light and dark modes */
+  .header-gradient,
+  .header-gradient * {
+    --tw-text-opacity: 1;
+  }
+  .header-gradient {
+    color: #ffffff;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.35s ease;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-slide-out-right {
+    animation: slideOutRight 0.25s ease-in forwards;
+  }
+
+  .brand-text-gradient {
+    background: linear-gradient(90deg, hsl(0 0% 100%) 0%, hsl(0 0% 100%) 60%, hsl(168 76% 50%) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .stat-card {
+    position: relative; overflow: hidden;
+    background: linear-gradient(160deg, hsl(var(--card)) 0%, hsl(var(--secondary)) 100%);
+  }
+  .stat-card::after {
+    content: ''; position: absolute; right: 0; bottom: 0; width: 72px; height: 72px;
+    background: linear-gradient(135deg, transparent 50%, var(--stat-color) 100%);
+    opacity: 0.55; transition: opacity .2s;
+  }
+  .stat-card:hover::after { opacity: 0.85; }
+  .login-bg {
+    background:
+      radial-gradient(ellipse at 70% 30%, hsl(205 80% 96%) 0%, transparent 60%),
+      linear-gradient(135deg, hsl(210 60% 97%) 0%, hsl(0 0% 100%) 50%, hsl(205 60% 95%) 100%);
+    color: hsl(222 58% 12%);
+  }
+  .login-card {
+    background: linear-gradient(170deg, hsl(215 60% 16%) 0%, hsl(225 62% 11%) 100%);
+    color: hsl(210 40% 98%);
+    box-shadow: 0 30px 60px -20px hsl(222 60% 10% / 0.55);
+  }
+  .login-input {
+    background: hsl(218 50% 18% / 0.7); border: 1px solid hsl(215 40% 30%); color: hsl(210 40% 98%);
+  }
+  .login-input::placeholder { color: hsl(215 25% 62%); }
+  .login-input:focus { outline: none; border-color: hsl(168 76% 45%); box-shadow: 0 0 0 3px hsl(168 76% 45% / 0.2); }
+  .login-input option { background: hsl(222 58% 12%); }
+  .login-button {
+    background: linear-gradient(90deg, hsl(168 80% 42%) 0%, hsl(212 90% 55%) 65%, hsl(245 85% 62%) 100%);
+    color: hsl(0 0% 100%); box-shadow: 0 10px 24px -8px hsl(200 90% 50% / 0.55);
+  }
+  .brand-underline { background: linear-gradient(90deg, hsl(80 70% 50%), hsl(168 76% 42%), hsl(212 90% 55%)); }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
