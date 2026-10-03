@@ -44,20 +44,20 @@ export default function AuthPage({ onSignIn }: AuthPageProps) {
       {/* Single stacked card: white brand block on top, navy login block below */}
       <div className="w-full max-w-[404px] mx-auto animate-fade-in">
         <div className="rounded-[22px] overflow-hidden shadow-[0_30px_70px_-28px_rgba(15,23,42,0.45)]">
-          {/* ── Brand (light) ── */}
-          <div className="bg-[#fffdf6] px-8 pt-8 pb-7 text-center">
+          {/* ── Brand (light) — blok identitas ringkas, hierarki jelas ── */}
+          <div className="bg-[#fffdf6] px-6 pt-5 pb-4 text-center">
             <img
               src={logoBima}
               alt="Logo Kabupaten Bima"
-              className="w-[100px] h-[100px] object-contain mx-auto"
+              className="w-16 h-16 object-contain mx-auto"
             />
-            <h1 className="text-[40px] leading-none font-extrabold tracking-tight text-[#16233b] mt-3">SIDATA</h1>
-            <p className="text-[17px] font-bold text-[#16233b] mt-3">Sistem Informasi Data Pertanahan</p>
-            <p className="text-[13px] text-slate-500 mt-2">Kantor Pertanahan Kab. Bima</p>
+            <h1 className="text-[30px] leading-none font-extrabold tracking-tight text-[#16233b] mt-2">SIDATA</h1>
+            <p className="text-[14px] font-bold text-[#16233b] mt-1.5 leading-snug">Sistem Informasi Data Pertanahan</p>
+            <p className="text-[12px] text-slate-500 mt-1">Kantor Pertanahan Kab. Bima</p>
           </div>
 
           {/* ── Login (navy) ── */}
-          <div className="login-panel px-7 pt-6 pb-7">
+          <div className="login-panel px-7 pt-5 pb-6">
             <p className="text-[11px] font-bold tracking-[0.28em] text-slate-400 mb-4">LOGIN</p>
 
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -138,6 +138,17 @@ export default function AuthPage({ onSignIn }: AuthPageProps) {
               </button>
             </form>
           </div>
+        </div>
+
+        {/* ── Keterangan identitas di bawah kartu ── */}
+        <div className="mt-4 text-center">
+          <p className="text-[12px] font-semibold text-slate-500 dark:text-slate-400 inline-flex items-center gap-1.5">
+            <Lock className="w-3.5 h-3.5" />
+            Akses sistem terlindungi
+          </p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
+            © 2026 SIDATA • Sistem Informasi Data Pertanahan • Versi 1.0.0
+          </p>
         </div>
       </div>
     </div>
