@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Menu, CalendarDays, LogOut, ChevronDown, Sun, Moon, User, Search, ArrowRight } from 'lucide-react';
+import { Menu, CalendarDays, LogOut, ChevronDown, Palette, User, Search, ArrowRight } from 'lucide-react';
 import NotificationBell from './NotificationBell';
+import ThemePanel from './ThemePanel';
 import { DataType, typeLabels } from '@/lib/sidata-config';
 
 const ALL_TYPES: DataType[] = ['surat_masuk', 'surat_keluar', 'buku_tamu', 'inventaris_dokumen', 'pengajuan_bpn', 'perjalanan_dinas', 'agenda_rapat', 'lembur'];
@@ -20,9 +21,11 @@ export default function AppHeader({ isAdmin, currentUser, avatarUrl, onToggleSid
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
-  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const [themeOpen, setThemeOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  const paletteRef = useRef<HTMLButtonElement>(null);
+  const themePanelRef = useRef<HTMLDivElement>(null);
 
   const todayDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -39,23 +42,17 @@ export default function AppHeader({ isAdmin, currentUser, avatarUrl, onToggleSid
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const toggleDarkMode = () => {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.classList.toggle('dark', next);
-    localStorage.setItem('sidata-theme', next ? 'dark' : 'light');
-  };
-
+  // Tutup panel Tema & Warna saat klik di luar panel dan tombol palet.
   useEffect(() => {
-    const saved = localStorage.getItem('sidata-theme');
-    if (saved === 'dark') {
-      document.documentElement.classList.add('dark');
-      setIsDark(true);
-    } else if (saved === 'light') {
-      document.documentElement.classList.remove('dark');
-      setIsDark(false);
-    }
-  }, []);
+    if (!themeOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (paletteRef.current && paletteRef.current.contains(e.target as Node)) return;
+      if (themePanelRef.current && themePanelRef.current.contains(e.target as Node)) return;
+      setThemeOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [themeOpen]);
 
   const handleQueryChange = (value: string) => {
     setQuery(value);
@@ -143,12 +140,20 @@ export default function AppHeader({ isAdmin, currentUser, avatarUrl, onToggleSid
         )}
 
         <button
-          onClick={toggleDarkMode}
-          className="w-10 h-10 rounded-full flex items-center justify-center text-foreground/75 hover:bg-foreground/[0.07] transition-all duration-200 active:scale-95"
-          title={isDark ? 'Mode Terang' : 'Mode Gelap'}
+          ref={paletteRef}
+          onClick={() => setThemeOpen(open => !open)}
+          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-foreground/[0.07] transition-all duration-200 active:scale-95"
+          title="Tema & Warna"
+          aria-label="Tema & Warna"
+          aria-expanded={themeOpen}
         >
-          {isDark ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
+          <Palette className="w-[18px] h-[18px] text-primary" />
         </button>
+        {themeOpen && (
+          <div ref={themePanelRef} className="absolute top-full right-0 mt-2">
+            <ThemePanel onClose={() => setThemeOpen(false)} />
+          </div>
+        )}
 
         <div className="relative" ref={dropdownRef}>
           <button

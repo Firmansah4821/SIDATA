@@ -232,3 +232,24 @@
   from { transform: translateX(0); opacity: 1; }
   to { transform: translateX(100%); opacity: 0; }
 }
+
+/* ───────────────────────────────────────────────
+   Tema & Warna (panel palet) — mapping aksen minimum.
+   Hanya elemen UI: tombol utama (--primary), focus ring (--ring),
+   dan chip menu aktif sidebar (--sidebar-active-*).
+   Warna semantik grafik/donut TIDAK disentuh di sini.
+   Aturan tanpa layer ini berada di atas :root/.dark bawaan.
+   ─────────────────────────────────────────────── */
+[data-accent='biru'] { --primary: 221 83% 53%; --ring: 221 83% 53%; --sidebar-active-bg: #f7f3e6; --sidebar-active-fg: #16233b; }
+[data-accent='ungu'] { --primary: 262 83% 58%; --ring: 262 83% 58%; --sidebar-active-bg: #f1e8ff; --sidebar-active-fg: #4c1d95; }
+[data-accent='hijau'] { --primary: 152 76% 40%; --ring: 152 76% 40%; --sidebar-active-bg: #e7f8ee; --sidebar-active-fg: #14532d; }
+[data-accent='teal'] { --primary: 173 80% 34%; --ring: 173 80% 34%; --sidebar-active-bg: #e0f6f3; --sidebar-active-fg: #134e4a; }
+[data-accent='rose'] { --primary: 350 84% 47%; --ring: 350 84% 47%; --sidebar-active-bg: #ffe9ef; --sidebar-active-fg: #881337; }
+[data-accent='amber'] { --primary: 38 92% 40%; --ring: 38 92% 40%; --sidebar-active-bg: #fdf0d5; --sidebar-active-fg: #78350f; }
+
+.dark [data-accent='biru'] { --primary: 217 91% 60%; --ring: 217 91% 60%; }
+.dark [data-accent='ungu'] { --primary: 258 90% 66%; --ring: 258 90% 66%; }
+.dark [data-accent='hijau'] { --primary: 158 64% 52%; --ring: 158 64% 52%; }
+.dark [data-accent='teal'] { --primary: 172 66% 50%; --ring: 172 66% 50%; }
+.dark [data-accent='rose'] { --primary: 350 89% 66%; --ring: 350 89% 66%; }
+.dark [data-accent='amber'] { --primary: 40 93% 50%; --ring: 40 93% 50%; }
