@@ -18,10 +18,11 @@ import { DetailModal, ConfirmDeleteModal } from '@/components/sidata/Modals';
 import UserManagement from '@/components/sidata/UserManagement';
 import ProfileSection from '@/components/sidata/ProfileSection';
 import { DashboardSkeleton } from '@/components/sidata/LoadingSkeleton';
-import { BarChart3, UserCircle } from 'lucide-react';
+import ComingSoon from '@/components/sidata/ComingSoon';
+import { BarChart3, UserCircle, History, Archive } from 'lucide-react';
 import type { AuthState } from '@/hooks/useAuth';
 
-type AdminView = 'admin-dashboard' | 'admin-input' | 'admin-laporan' | 'admin-profil' | 'admin-module-dashboard' | 'admin-kalender';
+type AdminView = 'admin-dashboard' | 'admin-input' | 'admin-laporan' | 'admin-profil' | 'admin-module-dashboard' | 'admin-kalender' | 'admin-log-aktivitas' | 'admin-backup-restore';
 
 interface AdminDashboardProps {
   auth: AuthState & { signOut: () => Promise<void>; refreshProfile: () => Promise<void> };
@@ -36,7 +37,9 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
   const [view, setView] = useState<AdminView>('admin-dashboard');
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [submenuOpen, setSubmenuOpen] = useState(false);
-  const [laporanSubmenuOpen, setLaporanSubmenuOpen] = useState(false);
+  // Laporan terbuka default (sesuai gambar acuan); Input Data tetap tertutup default.
+  const [laporanSubmenuOpen, setLaporanSubmenuOpen] = useState(true);
+  const [pengaturanSubmenuOpen, setPengaturanSubmenuOpen] = useState(false);
   const [laporanType, setLaporanType] = useState<DataType>('surat_masuk');
   const [inputType, setInputType] = useState<DataType>('surat_masuk');
   const [moduleDashboardType, setModuleDashboardType] = useState<DataType>('surat_masuk');
@@ -296,6 +299,8 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
           onSelectType={() => {}}
           onSelectLaporanType={() => {}}
           onAdminDashboard={() => {}}
+          pengaturanSubmenuOpen={pengaturanSubmenuOpen}
+          onTogglePengaturanSubmenu={() => {}}
         />
         <div className="relative flex-1 flex flex-col overflow-hidden min-w-0">
           <div aria-hidden="true" className="topbar-wave pointer-events-none absolute top-0 right-0 h-[220px] w-[65%] z-0" />
@@ -333,6 +338,12 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
         onAdminDashboard={() => { setView('admin-dashboard'); closeSidebarOnMobile(); }}
         onProfil={() => { setView('admin-profil'); closeSidebarOnMobile(); }}
         onKalender={() => { handleOpenKalender(); closeSidebarOnMobile(); }}
+        pengaturanSubmenuOpen={pengaturanSubmenuOpen}
+        onTogglePengaturanSubmenu={() => setPengaturanSubmenuOpen(!pengaturanSubmenuOpen)}
+        onSelectPengaturan={(item) => {
+          setView(item === 'log-aktivitas' ? 'admin-log-aktivitas' : 'admin-backup-restore');
+          closeSidebarOnMobile();
+        }}
       />
       {sidebarVisible && (
         <div className="fixed inset-0 bg-foreground/30 z-[998] md:hidden" onClick={() => setSidebarVisible(false)} />
@@ -433,6 +444,20 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
               )}
               <UserManagement />
             </div>
+          )}
+          {view === 'admin-log-aktivitas' && (
+            <ComingSoon
+              icon={<History className="w-6 h-6 text-white" />}
+              title="Log Aktivitas"
+              subtitle="Riwayat aktivitas pengguna sistem"
+            />
+          )}
+          {view === 'admin-backup-restore' && (
+            <ComingSoon
+              icon={<Archive className="w-6 h-6 text-white" />}
+              title="Backup & Restore"
+              subtitle="Pencadangan dan pemulihan data"
+            />
           )}
         </main>
       </div>

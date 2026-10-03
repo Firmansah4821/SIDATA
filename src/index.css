@@ -46,6 +46,9 @@
     --navy-900: #111b2e;
     --navy-800: #16233b;
     --navy-700: #1c2e52;
+    /* Sidebar active chip (di-override per aksen di bagian Tema & Warna) */
+    --sidebar-active-bg: #f7f3e6;
+    --sidebar-active-fg: #16233b;
   }
 
   .dark {
@@ -122,6 +125,16 @@
   .sidata-sidebar {
     background: linear-gradient(180deg, hsl(217 49% 19%) 0%, hsl(222 50% 13%) 55%, hsl(226 52% 10%) 100%);
     color: #ffffff;
+  }
+
+  /* Parent menu bersubmenu yang terbuka (bukan item aktif) — tint mengikuti aksen */
+  .sidata-nav-open {
+    background-color: hsl(var(--primary) / 0.25);
+  }
+
+  /* Submenu item aktif — tint mengikuti aksen */
+  .sidata-nav-sub-active {
+    background-color: hsl(var(--primary) / 0.5);
   }
 
   /* ── Statistic card with thin corner wave accent ── */
