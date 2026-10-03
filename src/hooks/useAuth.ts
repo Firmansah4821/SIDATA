@@ -2,6 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
+// ── Gerbang verifikasi peran login ──────────────────────────────────────
+// Selama signIn() memverifikasi peran, listener onAuthStateChange menahan
+// sesi (tidak memperbarui state) agar halaman tidak berpindah/berkedip
+// sebelum verifikasi selesai. Sesi yang ditahan diterapkan tepat satu kali
+// setelah verifikasi lolos.
+let loginVerificationPending = false;
+let heldSessionDuringVerification: Session | null = null;
+let applySessionToState: ((session: Session) => Promise<void>) | null = null;
+
 export interface Profile {
   full_name: string | null;
   jabatan: string | null;
@@ -69,6 +78,8 @@ export function useAuth() {
       }
     };
 
+    applySessionToState = setAuthed;
+
     const safetyTimer = setTimeout(() => {
       if (!mounted) return;
       setState((s) => ({ ...s, loading: false }));
@@ -76,8 +87,17 @@ export function useAuth() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
-      if (session?.user) void setAuthed(session);
-      else setUnauthed();
+      if (session?.user) {
+        // Tahan sesi selama verifikasi peran login masih berjalan.
+        if (loginVerificationPending) {
+          heldSessionDuringVerification = session;
+          return;
+        }
+        void setAuthed(session);
+      } else {
+        heldSessionDuringVerification = null;
+        setUnauthed();
+      }
     });
 
     const init = async () => {
@@ -111,28 +131,51 @@ export function useAuth() {
 
     return () => {
       mounted = false;
+      applySessionToState = null;
       clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, [fetchProfileAndRole]);
 
   const signIn = async (username: string, password: string, role?: 'admin' | 'operator') => {
-    // Look up email by username using RPC
-    const { data: email, error: rpcError } = await supabase.rpc('get_email_by_username' as any, { _username: username });
+    loginVerificationPending = true;
+    heldSessionDuringVerification = null;
+    try {
+      // Look up email by username using RPC
+      const { data: email, error: rpcError } = await supabase.rpc('get_email_by_username' as any, { _username: username });
 
-    const loginEmail = !rpcError && email ? (email as string) : username;
-    const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
-    if (error || !role || !data.user) return error;
+      const loginEmail = !rpcError && email ? (email as string) : username;
+      const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
+      if (error || !data.user) return error;
+      if (!role) {
+        // Tanpa peran terpilih: jangan biarkan sesi tanpa verifikasi peran.
+        await supabase.auth.signOut();
+        return { message: 'ROLE_REQUIRED', status: 400 } as any;
+      }
 
-    // Verify selected role against existing user_roles
-    const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', data.user.id);
-    const isAdminUser = (roles || []).some((r: any) => r.role === 'admin');
-    const matches = role === 'admin' ? isAdminUser : !isAdminUser;
-    if (!matches) {
-      await supabase.auth.signOut();
-      return { message: 'ROLE_MISMATCH', status: 403 } as any;
+      // Verify selected role against existing user_roles
+      const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', data.user.id);
+      const isAdminUser = (roles || []).some((r: any) => r.role === 'admin');
+      const matches = role === 'admin' ? isAdminUser : !isAdminUser;
+      if (!matches) {
+        // Peran tidak cocok: bersihkan sesi yang baru terbentuk, tanpa navigasi.
+        await supabase.auth.signOut();
+        return { message: 'ROLE_MISMATCH', status: 403, actualRole: isAdminUser ? 'admin' : 'operator' } as any;
+      }
+
+      // Verifikasi lolos — rilis gerbang lalu terapkan sesi (navigasi satu kali).
+      loginVerificationPending = false;
+      let session = heldSessionDuringVerification;
+      heldSessionDuringVerification = null;
+      if (!session) {
+        const { data: current } = await supabase.auth.getSession();
+        session = current.session;
+      }
+      if (session && applySessionToState) await applySessionToState(session);
+      return null;
+    } finally {
+      loginVerificationPending = false;
     }
-    return null;
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {

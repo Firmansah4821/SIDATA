@@ -9,7 +9,7 @@ interface AuthPageProps {
 export default function AuthPage({ onSignIn }: AuthPageProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'admin' | 'operator'>('admin');
+  const [role, setRole] = useState<'admin' | 'operator' | ''>('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -17,13 +17,22 @@ export default function AuthPage({ onSignIn }: AuthPageProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Belum memilih peran: tampilkan pesan tanpa memanggil autentikasi.
+    if (!role) {
+      setError('Silakan pilih peran dulu');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const err = await onSignIn(username.trim(), password, role);
       if (err) {
         if (err.message === 'ROLE_MISMATCH') {
-          setError(`Akun ini tidak terdaftar sebagai ${role === 'admin' ? 'Admin' : 'Operator'}. Pilih peran yang sesuai.`);
+          const actual: 'admin' | 'operator' = err.actualRole ?? (role === 'admin' ? 'operator' : 'admin');
+          const label = actual === 'admin' ? 'Admin' : 'Petugas';
+          setError(`Akun ini terdaftar sebagai ${label} — pilih ${label} untuk masuk`);
         } else if (err.message?.includes('Invalid login credentials')) {
           setError('Username atau password salah. Silakan coba lagi.');
         } else if (err.message?.includes('Email not confirmed')) {
@@ -115,8 +124,11 @@ export default function AuthPage({ onSignIn }: AuthPageProps) {
                   className="login-input w-full h-12 pl-11 pr-10 rounded-xl text-sm appearance-none cursor-pointer transition-all"
                   aria-label="Masuk sebagai"
                 >
+                  <option value="" disabled>
+                    Silakan pilih peran
+                  </option>
                   <option value="admin">Admin</option>
-                  <option value="operator">Operator</option>
+                  <option value="operator">Petugas</option>
                 </select>
                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               </div>
