@@ -21,6 +21,7 @@ const App = () => (
           <Route path="/open-file" element={<OpenFileRedirect />} />
           {/* Pengaturan — khusus Admin (Petugas ditolak "Khusus Admin") */}
           <Route path="/pengaturan/log-aktivitas" element={<PengaturanRouteGuard />} />
+          <Route path="/pengaturan/backup-restore" element={<PengaturanRouteGuard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

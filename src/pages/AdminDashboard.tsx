@@ -18,10 +18,10 @@ import { DetailModal, ConfirmDeleteModal } from '@/components/sidata/Modals';
 import UserManagement from '@/components/sidata/UserManagement';
 import ProfileSection from '@/components/sidata/ProfileSection';
 import { DashboardSkeleton } from '@/components/sidata/LoadingSkeleton';
-import ComingSoon from '@/components/sidata/ComingSoon';
 import LogAktivitas from '@/components/sidata/LogAktivitas';
+import BackupRestore from '@/components/sidata/BackupRestore';
 import { KhususAdminInline } from '@/components/sidata/PengaturanRouteGuard';
-import { BarChart3, UserCircle, Archive } from 'lucide-react';
+import { BarChart3, UserCircle } from 'lucide-react';
 import type { AuthState } from '@/hooks/useAuth';
 
 type AdminView = 'admin-dashboard' | 'admin-input' | 'admin-laporan' | 'admin-profil' | 'admin-module-dashboard' | 'admin-kalender' | 'admin-log-aktivitas' | 'admin-backup-restore';
@@ -474,11 +474,7 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
             auth.isAdmin ? <LogAktivitas /> : <KhususAdminInline title="Log Aktivitas" />
           )}
           {view === 'admin-backup-restore' && (
-            <ComingSoon
-              icon={<Archive className="w-6 h-6 text-white" />}
-              title="Backup & Restore"
-              subtitle="Pencadangan dan pemulihan data"
-            />
+            auth.isAdmin ? <BackupRestore /> : <KhususAdminInline title="Backup & Restore" />
           )}
         </main>
       </div>
