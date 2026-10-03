@@ -19,7 +19,9 @@ import UserManagement from '@/components/sidata/UserManagement';
 import ProfileSection from '@/components/sidata/ProfileSection';
 import { DashboardSkeleton } from '@/components/sidata/LoadingSkeleton';
 import ComingSoon from '@/components/sidata/ComingSoon';
-import { BarChart3, UserCircle, History, Archive } from 'lucide-react';
+import LogAktivitas from '@/components/sidata/LogAktivitas';
+import { KhususAdminInline } from '@/components/sidata/PengaturanRouteGuard';
+import { BarChart3, UserCircle, Archive } from 'lucide-react';
 import type { AuthState } from '@/hooks/useAuth';
 
 type AdminView = 'admin-dashboard' | 'admin-input' | 'admin-laporan' | 'admin-profil' | 'admin-module-dashboard' | 'admin-kalender' | 'admin-log-aktivitas' | 'admin-backup-restore';
@@ -34,12 +36,19 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
   const [recordsLoaded, setRecordsLoaded] = useState(false);
   const [loadedTypes, setLoadedTypes] = useState<Set<DataType>>(new Set());
   const [laporanLoading, setLaporanLoading] = useState(false);
-  const [view, setView] = useState<AdminView>('admin-dashboard');
+  // Deep link /pengaturan/* — view awal mengikuti URL (hanya Admin yang bisa masuk).
+  const [deepLinkView] = useState<AdminView | null>(() => {
+    const p = window.location.pathname.replace(/\/+$/, '');
+    if (p === '/pengaturan/log-aktivitas') return 'admin-log-aktivitas';
+    if (p === '/pengaturan/backup-restore') return 'admin-backup-restore';
+    return null;
+  });
+  const [view, setView] = useState<AdminView>(deepLinkView ?? 'admin-dashboard');
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [submenuOpen, setSubmenuOpen] = useState(false);
   // Laporan terbuka default (sesuai gambar acuan); Input Data tetap tertutup default.
   const [laporanSubmenuOpen, setLaporanSubmenuOpen] = useState(true);
-  const [pengaturanSubmenuOpen, setPengaturanSubmenuOpen] = useState(false);
+  const [pengaturanSubmenuOpen, setPengaturanSubmenuOpen] = useState(deepLinkView !== null);
   const [laporanType, setLaporanType] = useState<DataType>('surat_masuk');
   const [inputType, setInputType] = useState<DataType>('surat_masuk');
   const [moduleDashboardType, setModuleDashboardType] = useState<DataType>('surat_masuk');
@@ -48,6 +57,22 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
   const [kalenderLoading, setKalenderLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [topbarSearch, setTopbarSearch] = useState('');
+
+  // Jaga URL tetap sinkron dengan view Pengaturan (tanpa reload, tanpa mengubah routing lain).
+  useEffect(() => {
+    const p = window.location.pathname;
+    if (view === 'admin-log-aktivitas' && p !== '/pengaturan/log-aktivitas') {
+      window.history.replaceState(null, '', '/pengaturan/log-aktivitas');
+    } else if (view === 'admin-backup-restore' && p !== '/pengaturan/backup-restore') {
+      window.history.replaceState(null, '', '/pengaturan/backup-restore');
+    } else if (
+      view !== 'admin-log-aktivitas' &&
+      view !== 'admin-backup-restore' &&
+      p.startsWith('/pengaturan/')
+    ) {
+      window.history.replaceState(null, '', '/');
+    }
+  }, [view]);
 
   const [detailRecord, setDetailRecord] = useState<SidataRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SidataRecord | null>(null);
@@ -446,11 +471,7 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
             </div>
           )}
           {view === 'admin-log-aktivitas' && (
-            <ComingSoon
-              icon={<History className="w-6 h-6 text-white" />}
-              title="Log Aktivitas"
-              subtitle="Riwayat aktivitas pengguna sistem"
-            />
+            auth.isAdmin ? <LogAktivitas /> : <KhususAdminInline title="Log Aktivitas" />
           )}
           {view === 'admin-backup-restore' && (
             <ComingSoon
