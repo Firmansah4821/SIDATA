@@ -8,7 +8,23 @@ import {
   ChevronRight,
   RefreshCw,
   RotateCcw,
+  Copy,
+  Check,
+  Download,
+  AlertTriangle,
+  Info,
 } from 'lucide-react';
+import { LOG_SETUP_SQL } from '@/lib/log-aktivitas-setup';
+import { downloadTextFile } from '@/lib/sidata-backup';
+
+const setupPrimaryBtn =
+  'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:opacity-90 transition-opacity';
+const setupSecondaryBtn =
+  'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border border-border bg-card text-foreground hover:bg-muted transition-colors';
+
+/** Tabel tidak ditemukan (PostgreSQL 42P01 / PostgREST PGRST205). */
+const isTableMissing = (e: any) =>
+  e?.code === '42P01' || e?.code === 'PGRST205';
 
 const PAGE_SIZE = 15;
 const TABLE = 'log_aktivitas';
@@ -84,6 +100,8 @@ export default function LogAktivitas() {
   const [tabelOptions, setTabelOptions] = useState<string[]>([]);
   const [penggunaOptions, setPenggunaOptions] = useState<{ value: string; label: string }[]>([]);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [setupNeeded, setSetupNeeded] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   /** Probe skema + muat opsi filter + peta nama profil (sekali di awal / refresh). */
   const init = useCallback(async () => {
@@ -94,7 +112,20 @@ export default function LogAktivitas() {
       const probe: any = await (supabase.from(TABLE as any) as any)
         .select('*', { count: 'exact' })
         .limit(1);
-      if (probe.error) throw new Error(probe.error.message);
+      if (probe.error) {
+        if (isTableMissing(probe.error)) {
+          // Tabel public.log_aktivitas belum ada → layar setup SQL
+          setSetupNeeded(true);
+          setSchema(null);
+          setRows([]);
+          setTotal(0);
+          return;
+        }
+        const err: any = new Error(probe.error.message);
+        err.code = probe.error.code;
+        throw err;
+      }
+      setSetupNeeded(false);
 
       const totalCount = probe.count || 0;
       setTotal(totalCount);
@@ -163,10 +194,18 @@ export default function LogAktivitas() {
         setPenggunaOptions([]);
       }
     } catch (e: any) {
-      setError(e?.message || 'Gagal memuat log aktivitas.');
-      setSchema(null);
-      setRows([]);
-      setTotal(0);
+      if (isTableMissing(e)) {
+        setSetupNeeded(true);
+        setError('');
+        setSchema(null);
+        setRows([]);
+        setTotal(0);
+      } else {
+        setError(e?.message || 'Gagal memuat log aktivitas.');
+        setSchema(null);
+        setRows([]);
+        setTotal(0);
+      }
     } finally {
       setLoading(false);
     }
@@ -218,12 +257,22 @@ export default function LogAktivitas() {
           setNotice('Pencarian teks tidak didukung kolom ini — data ditampilkan tanpa filter pencarian.');
         }
       }
-      if (res.error) throw new Error(res.error.message);
+      if (res.error) {
+        const err: any = new Error(res.error.message);
+        err.code = res.error.code;
+        throw err;
+      }
       setRows(res.data || []);
       setTotal(res.count || 0);
     } catch (e: any) {
-      setError(e?.message || 'Gagal memuat log aktivitas.');
-      setRows([]);
+      if (isTableMissing(e)) {
+        setSetupNeeded(true);
+        setError('');
+        setRows([]);
+      } else {
+        setError(e?.message || 'Gagal memuat log aktivitas.');
+        setRows([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -253,9 +302,119 @@ export default function LogAktivitas() {
     setPage(0);
   };
 
+  /** Coba lagi setelah SQL setup dijalankan manual oleh Admin di Supabase. */
+  const retrySetup = () => {
+    setSetupNeeded(false);
+    init();
+  };
+
+  const copySql = async () => {
+    const showCopied = () => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    };
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('clipboard-unavailable');
+      await navigator.clipboard.writeText(LOG_SETUP_SQL);
+      showCopied();
+    } catch {
+      // Fallback bila Clipboard API tidak tersedia (mis. konteks non-https)
+      const ta = document.createElement('textarea');
+      ta.value = LOG_SETUP_SQL;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showCopied();
+      } catch {
+        /* biarkan; pengguna tetap bisa Unduh .sql */
+      }
+      ta.remove();
+    }
+  };
+
+  const downloadSql = () => {
+    downloadTextFile('sidata-setup-log-aktivitas.sql', LOG_SETUP_SQL, 'application/sql;charset=utf-8');
+  };
+
   const hasFilter =
     filters.search !== '' || filters.aksi !== '' || filters.tabel !== '' ||
     filters.pengguna !== '' || filters.tanggal !== '';
+
+  // ── Layar "Log Aktivitas Belum Aktif" (tabel tidak ditemukan) ──
+  if (setupNeeded) {
+    return (
+      <div className="animate-fade-in">
+        <div className="flex items-center gap-3.5 mb-6">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+            <History className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-[26px] leading-tight font-extrabold text-foreground">Log Aktivitas</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">Riwayat aktivitas pengguna sistem</p>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-2xl border border-border/80 shadow-[0_1px_3px_rgba(15,23,42,0.05)] p-6 max-w-2xl">
+          <div className="flex items-start gap-3.5">
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: 'hsl(var(--warning) / 0.15)' }}
+            >
+              <AlertTriangle className="w-6 h-6" style={{ color: 'hsl(var(--warning))' }} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-lg font-extrabold text-foreground">Log Aktivitas Belum Aktif</h3>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                Tabel <span className="font-mono text-xs font-semibold text-foreground">public.log_aktivitas</span>{' '}
+                belum ditemukan di database proyek ini. Jalankan SQL setup berikut sekali lewat
+                Supabase, lalu coba lagi.
+              </p>
+            </div>
+          </div>
+
+          <ol className="mt-4 space-y-2 text-sm text-muted-foreground list-decimal pl-5 leading-relaxed">
+            <li>
+              Buka <span className="font-semibold text-foreground">Supabase Dashboard → SQL Editor</span> proyek SIDATA.
+            </li>
+            <li>
+              Tempel hasil tombol <span className="font-semibold text-foreground">Salin SQL Setup</span> (atau buka
+              file hasil <span className="font-semibold text-foreground">Unduh .sql</span>), lalu jalankan.
+            </li>
+            <li>
+              Kembali ke halaman ini dan klik <span className="font-semibold text-foreground">Coba Lagi</span>.
+            </li>
+          </ol>
+
+          <div className="mt-5 flex flex-wrap gap-2.5">
+            <button onClick={copySql} className={setupPrimaryBtn}>
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? 'Tersalin!' : 'Salin SQL Setup'}
+            </button>
+            <button onClick={downloadSql} className={setupSecondaryBtn}>
+              <Download className="w-4 h-4" />
+              Unduh .sql
+            </button>
+            <button onClick={retrySetup} className={setupSecondaryBtn}>
+              <RefreshCw className="w-4 h-4" />
+              Coba Lagi
+            </button>
+          </div>
+
+          <p className="mt-4 flex items-start gap-2 text-xs text-muted-foreground leading-relaxed">
+            <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <span>
+              Aplikasi hanya menyalin atau mengunduh file SQL ini — <span className="font-semibold text-foreground">tidak
+              pernah menjalankannya</span> ke database. Periksa isinya sebelum dijalankan di Supabase.
+            </span>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const displayName = (row: Record<string, any>): string => {
     if (schema?.name && row[schema.name]) return String(row[schema.name]);
