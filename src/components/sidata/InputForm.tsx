@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { DataType, typeLabels, formFields, SidataRecord, namaPegawaiOptions } from '@/lib/sidata-config';
+import { DataType, typeLabels, formFields, SidataRecord, namaPegawaiOptions, type FormField } from '@/lib/sidata-config';
 import { showSidataToast } from './Toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Send, Loader2, AlertCircle, CheckCircle2, X, AlertTriangle, Settings2 } from 'lucide-react';
+import { ArrowLeft, Send, Loader2, AlertCircle, CheckCircle2, X, AlertTriangle, Settings2, FileText, FolderOpen, Paperclip, User, Users, ClipboardList, MapPin, Camera, Hash, Clock, Car, CalendarDays, Upload, type LucideIcon } from 'lucide-react';
 import { usePegawaiOptions } from '@/hooks/usePegawaiOptions';
 import { useAuth } from '@/hooks/useAuth';
 import ManagePegawaiModal from './ManagePegawaiModal';
@@ -105,6 +105,104 @@ async function uploadCompressedImage(originalName: string, fieldId: string, data
   return publicUrl;
 }
 
+// ── Tampilan kartu seksi (Gambar B) — Murni presentasi/tata letak ────────
+// Setiap field tetap dirender persis satu kali dan tetap pada urutan asli
+// dari konfigurasi: rencana seksi hanyalah potongan berurutan dari `formFields`,
+// sehingga urutan field, label, placeholder, logika, dan validasi tidak berubah.
+type FormSection = { title: string; Icon: LucideIcon; fields: FormField[] };
+
+const SECTION_PLANS: Partial<Record<DataType, { title: string; Icon: LucideIcon; ids: string[] }[]>> = {
+  surat_masuk: [
+    { title: 'Informasi Surat', Icon: FileText, ids: ['nomor_buku', 'asal_surat', 'nomor_surat', 'tanggal_surat', 'perihal', 'tanggal_terima'] },
+    { title: 'Klasifikasi & Disposisi', Icon: FolderOpen, ids: ['jenis_surat', 'disposisi_kadis_sekdis', 'tanggapan_kabid'] },
+    { title: 'Dokumen', Icon: Paperclip, ids: ['dokumen_surat'] },
+    { title: 'Operator', Icon: User, ids: ['operator'] },
+  ],
+  surat_keluar: [
+    { title: 'Informasi Surat', Icon: FileText, ids: ['nomor_buku', 'tujuan_surat', 'nomor_surat', 'tanggal_surat', 'perihal', 'tanggal_kirim'] },
+    { title: 'Klasifikasi & Disposisi', Icon: FolderOpen, ids: ['jenis_surat'] },
+    { title: 'Dokumen', Icon: Paperclip, ids: ['dokumen_surat'] },
+    { title: 'Operator', Icon: User, ids: ['operator'] },
+  ],
+  buku_tamu: [
+    { title: 'Identitas Tamu', Icon: User, ids: ['nama_tamu', 'jenis_kelamin', 'asal_tamu', 'kecamatan_tamu', 'desa_tamu'] },
+    { title: 'Detail Kunjungan', Icon: ClipboardList, ids: ['nomor_hp_tamu', 'tujuan_tamu', 'tanggal_tamu'] },
+    { title: 'Dokumen', Icon: Camera, ids: ['foto_tamu'] },
+  ],
+  inventaris_dokumen: [
+    { title: 'Informasi Dokumen', Icon: FileText, ids: ['tanggal_input', 'kategori_dokumen', 'asal_dokumen', 'perihal_dokumen', 'tanggal_dokumen'] },
+    { title: 'Lokasi & Status', Icon: MapPin, ids: ['lokasi_dokumen', 'desa_dokumen', 'status_dokumen'] },
+    { title: 'Kode Dokumen', Icon: Hash, ids: ['kode_kategori', 'kode_tahun', 'kode_urutan'] },
+  ],
+  pengajuan_bpn: [
+    { title: 'Informasi Pengajuan', Icon: FileText, ids: ['jenis_pengajuan', 'nomor_berkas_sps', 'tahun_berkas_sps', 'tanggal_terbit_sps'] },
+    { title: 'Lokasi & Pemohon', Icon: MapPin, ids: ['kecamatan_bpn', 'desa_bpn', 'pemohon_bpn'] },
+    { title: 'Keterangan & Dokumen', Icon: Paperclip, ids: ['keterangan_bpn', 'foto_sps_ttd'] },
+  ],
+  perjalanan_dinas: [
+    { title: 'Informasi Perjalanan', Icon: Car, ids: ['tanggal_perjalanan', 'tujuan_perjalanan', 'desa_perjalanan', 'dalam_rangka'] },
+    { title: 'Pelaku & Lokasi', Icon: MapPin, ids: ['pelaku_perjalanan', 'upload_lokasi'] },
+    { title: 'Dokumen', Icon: Camera, ids: ['foto_perjalanan'] },
+  ],
+  agenda_rapat: [
+    { title: 'Informasi Rapat', Icon: CalendarDays, ids: ['tanggal_rapat', 'waktu_rapat', 'tempat_rapat'] },
+    { title: 'Agenda & Peserta', Icon: ClipboardList, ids: ['agenda_rapat_detail', 'peserta_rapat'] },
+    { title: 'Dokumen', Icon: Paperclip, ids: ['upload_file_rapat'] },
+  ],
+  lembur: [
+    { title: 'Informasi Lembur', Icon: Clock, ids: ['tanggal_lembur', 'jam_mulai_lembur', 'jam_selesai_lembur'] },
+    { title: 'Pegawai & Bidang Unit', Icon: Users, ids: ['nama_pegawai_lembur', 'bidang_unit_lembur'] },
+    { title: 'Pekerjaan & Persetujuan', Icon: ClipboardList, ids: ['uraian_pekerjaan_lembur', 'lokasi_lembur', 'atasan_menyetujui_lembur', 'catatan_lembur'] },
+    { title: 'Dokumen', Icon: Camera, ids: ['foto_lembur'] },
+  ],
+};
+
+const GRID_FIELD_TYPES = new Set<FormField['type']>(['text', 'date', 'tel', 'time', 'number']);
+const isGridField = (f: FormField) => GRID_FIELD_TYPES.has(f.type);
+
+function buildSections(type: DataType, fields: FormField[]): FormSection[] {
+  const plan = SECTION_PLANS[type];
+  const used = new Set<string>();
+  const sections: FormSection[] = [];
+  if (plan) {
+    for (const p of plan) {
+      const secFields = fields.filter(f => p.ids.includes(f.id) && !used.has(f.id));
+      if (secFields.length === 0) continue;
+      secFields.forEach(f => used.add(f.id));
+      sections.push({ title: p.title, Icon: p.Icon, fields: secFields });
+    }
+  }
+  // Jaring pengaman: field yang belum terpetakan tetap ikut tampil (urutan asli).
+  const leftovers = fields.filter(f => !used.has(f.id));
+  if (leftovers.length > 0) {
+    sections.push({ title: plan ? 'Informasi Tambahan' : typeLabels[type], Icon: FileText, fields: leftovers });
+  }
+  return sections;
+}
+
+// Lebar kolom per field di dalam grid 2 kolom: input teks/tanggal/waktu berpasangan,
+// sedangkan dropdown, textarea, checklist, peta, dan kotak unggah memenuhi 1 baris penuh.
+// Bila sisa ganjil di akhir bagian, field terakhir memenuhi lebar penuh (tanpa ruang kosong).
+function fieldSpans(secFields: FormField[]): Record<string, string> {
+  const spans: Record<string, string> = {};
+  let i = 0;
+  while (i < secFields.length) {
+    if (isGridField(secFields[i])) {
+      let j = i;
+      while (j < secFields.length && isGridField(secFields[j])) j++;
+      const odd = (j - i) % 2 === 1;
+      for (let k = i; k < j; k++) {
+        spans[secFields[k].id] = odd && k === j - 1 ? 'col-span-1 sm:col-span-2' : 'col-span-1';
+      }
+      i = j;
+    } else {
+      spans[secFields[i].id] = 'col-span-1 sm:col-span-2';
+      i++;
+    }
+  }
+  return spans;
+}
+
 export default function InputForm({ type, onSubmit, onBack, editRecord }: InputFormProps) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<Record<string, FileList | null>>({});
@@ -125,6 +223,7 @@ export default function InputForm({ type, onSubmit, onBack, editRecord }: InputF
   const { isAdmin } = useAuth();
   const { names: dynamicNames } = usePegawaiOptions();
   const fields = formFields[type] || [];
+  const sections = buildSections(type, fields);
 
   // Fields that pull names from the managed "pegawai" list.
   const PEGAWAI_FIELDS = new Set(['pelaku_perjalanan', 'nama_pegawai_lembur']);
@@ -405,10 +504,19 @@ export default function InputForm({ type, onSubmit, onBack, editRecord }: InputF
           Kembali
         </button>
       </div>
-      <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {fields.map(f => (
-            <div key={f.id}>
+      <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-7 space-y-8">
+          {sections.map(sec => {
+            const spans = fieldSpans(sec.fields);
+            return (
+              <section key={sec.title}>
+                <div className="flex items-center gap-2.5 border-b border-border pb-3">
+                  <sec.Icon className="w-5 h-5 shrink-0 text-foreground" />
+                  <h3 className="text-base font-bold tracking-tight text-foreground">{sec.title}</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5 pt-4">
+          {sec.fields.map(f => (
+            <div key={f.id} className={spans[f.id] || 'col-span-1'}>
               <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <label className="block text-xs font-semibold text-foreground uppercase tracking-wider">
                   {f.label}
@@ -444,22 +552,27 @@ export default function InputForm({ type, onSubmit, onBack, editRecord }: InputF
                 </div>
               ) : f.type === 'file' ? (
                 <div>
-                  <div className="relative">
-                    <input
-                      type="file"
-                      accept={getFileAccept(f)}
-                      capture={(['foto_tamu', 'foto_perjalanan', 'foto_sps_ttd'].includes(f.id)) ? 'environment' : undefined}
-                      multiple={f.multiple}
-                      disabled={processingFiles[f.id]}
-                      onChange={async e => {
-                        const target = e.target;
-                        const ok = await handleFileChange(f.id, target.files, f.multiple);
-                        if (!ok) target.value = '';
-                      }}
-                      className="w-full px-4 py-3 border border-dashed border-input rounded-xl text-sm bg-muted/30 text-foreground focus:outline-none focus:border-primary cursor-pointer file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                    />
+                  <div className="rounded-xl border-2 border-dashed border-input bg-muted/20 px-4 py-3.5 transition-colors hover:border-primary/40 focus-within:border-primary">
+                    <div className="flex items-center gap-3">
+                      <span className="flex w-10 h-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Upload className="w-5 h-5" />
+                      </span>
+                      <input
+                        type="file"
+                        accept={getFileAccept(f)}
+                        capture={(['foto_tamu', 'foto_perjalanan', 'foto_sps_ttd'].includes(f.id)) ? 'environment' : undefined}
+                        multiple={f.multiple}
+                        disabled={processingFiles[f.id]}
+                        onChange={async e => {
+                          const target = e.target;
+                          const ok = await handleFileChange(f.id, target.files, f.multiple);
+                          if (!ok) target.value = '';
+                        }}
+                        className="w-full min-w-0 text-sm text-foreground cursor-pointer focus:outline-none file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-1.5 file:text-xs file:font-semibold file:text-primary hover:file:bg-primary/20"
+                      />
+                    </div>
                   </div>
-                  <small className="block mt-1.5 text-xs text-muted-foreground">{getFileHelpText(f.id)}</small>
+                  <small className="block mt-2 text-xs text-muted-foreground">{getFileHelpText(f.id)}</small>
                   {processingFiles[f.id] && (
                     <div className="mt-2 flex items-center gap-2 text-xs text-primary bg-primary/5 px-3 py-2 rounded-lg">
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -621,7 +734,11 @@ export default function InputForm({ type, onSubmit, onBack, editRecord }: InputF
                 </div>
               )}
             </div>
-          ))}
+                  ))}
+                </div>
+              </section>
+            );
+          })}
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
