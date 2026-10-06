@@ -270,3 +270,18 @@ export const extraFilters: Record<DataType, ExtraFilter[]> = {
     ] },
   ],
 };
+
+// ─── Filter kalender (date picker) di baris filter Laporan ───
+// Satu kolom tanggal utama per jenis laporan — dipakai oleh 1 filter kalender
+// baru yang diletakkan sejajar antara dropdown filter dan tombol Eksport.
+// agenda_rapat sengaja tidak dicantumkan: sudah memiliki filter tanggal di
+// `extraFilters` sehingga tidak terjadi dua kalender pada laporan yang sama.
+export const reportDateField: Partial<Record<DataType, string>> = {
+  surat_masuk: 'tanggal_surat',
+  surat_keluar: 'tanggal_surat',
+  buku_tamu: 'tanggal_tamu',
+  inventaris_dokumen: 'tanggal_dokumen',
+  pengajuan_bpn: 'tanggal_terbit_sps',
+  perjalanan_dinas: 'tanggal_perjalanan',
+  lembur: 'tanggal_lembur',
+};

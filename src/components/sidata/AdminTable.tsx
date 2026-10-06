@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { SidataRecord, DataType, FormField, typeLabels, formFields, extraFilters } from '@/lib/sidata-config';
+import { SidataRecord, DataType, FormField, typeLabels, formFields, extraFilters, reportDateField } from '@/lib/sidata-config';
 import { buildFileDirectUrl, getCleanStorageFileName } from '@/lib/file-link-utils';
 import { Search, Trash2, Inbox, Download, FileSpreadsheet, ChevronLeft, ChevronRight, X, ChevronDown, Loader2, Pencil, AlertTriangle, Paperclip } from 'lucide-react';
 import { CalendarDays } from 'lucide-react';
@@ -141,6 +141,7 @@ export default function AdminTable({ records, activeType, loading, onExport, onE
   const [page, setPage] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+  const [dateFilter, setDateFilter] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -155,9 +156,16 @@ export default function AdminTable({ records, activeType, loading, onExport, onE
 
   const filtersForType = extraFilters[activeType] || [];
 
+  // Filter kalender: kolom tanggal utama laporan aktif (lihat reportDateField).
+  const dateField = reportDateField[activeType];
+  const dateLabel = dateField
+    ? (formFields[activeType] || []).find(f => f.id === dateField)?.label || 'Tanggal'
+    : '';
+
   // Reset filters and page when switching report type
   useEffect(() => {
     setFilterValues({});
+    setDateFilter('');
     setPage(0);
     setSearch('');
   }, [activeType]);
@@ -207,6 +215,15 @@ export default function AdminTable({ records, activeType, loading, onExport, onE
         return parts.includes(sel);
       }
       return String(raw).trim() === sel;
+    });
+  }
+
+  // Apply calendar (date picker) filter — menyaring sesuai tanggal yang dipilih
+  if (dateField && dateFilter) {
+    filtered = filtered.filter(rec => {
+      const raw = (rec as any)[dateField];
+      if (raw === undefined || raw === null || raw === '') return false;
+      return String(raw).slice(0, 10) === dateFilter;
     });
   }
 
@@ -311,6 +328,36 @@ export default function AdminTable({ records, activeType, loading, onExport, onE
           );
         })}
 
+        {/* Filter kalender — TEPAT SATU date picker, sejajar antara dropdown dan Eksport */}
+        {dateField && (
+          <div className="relative flex-1 min-w-[180px]">
+            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={e => { setDateFilter(e.target.value); setPage(0); }}
+              className={`w-full h-10 pl-10 pr-8 border border-input rounded-xl text-sm bg-card text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring/10 transition-all cursor-pointer ${!dateFilter ? 'text-transparent' : ''}`}
+              title={`Filter ${dateLabel}`}
+              aria-label={`Filter ${dateLabel}`}
+            />
+            {!dateFilter && (
+              <span className="absolute left-10 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none truncate">
+                Pilih tanggal
+              </span>
+            )}
+            {dateFilter && (
+              <button
+                type="button"
+                onClick={() => { setDateFilter(''); setPage(0); }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-muted flex items-center justify-center hover:bg-destructive/20 transition-colors"
+                title="Hapus filter tanggal"
+              >
+                <X className="w-3 h-3 text-muted-foreground" />
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Eksport Dropdown */}
         <div className="relative" ref={dropdownRef}>
           <button
@@ -371,7 +418,7 @@ export default function AdminTable({ records, activeType, loading, onExport, onE
                       <Inbox className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
                       <p className="text-sm font-semibold text-muted-foreground">Belum ada data</p>
                       <p className="text-xs text-muted-foreground/60 mt-1">
-                        {search || Object.values(filterValues).some(Boolean)
+                        {search || dateFilter || Object.values(filterValues).some(Boolean)
                           ? 'Coba ubah kata pencarian atau filter'
                           : `Belum ada data ${typeLabels[activeType].toLowerCase()} yang diinput untuk kategori ini`}
                       </p>
