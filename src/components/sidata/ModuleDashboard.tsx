@@ -317,7 +317,7 @@ export default function ModuleDashboard({ type, records, loading, onBack, rootLa
                         align="right"
                         verticalAlign="middle"
                         wrapperStyle={{ fontSize: 11 }}
-                        formatter={(value: any, entry: any) => {
+                        formatter={(value: string | number, entry: { value?: unknown; payload?: { name?: unknown; value?: unknown } }) => {
                           const data = entry?.payload;
                           const name = typeof data?.name === 'string' ? data.name : String(value);
                           const count = typeof data?.value === 'number'

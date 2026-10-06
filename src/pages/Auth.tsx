@@ -40,9 +40,9 @@ export default function AuthPage({ onSignIn }: AuthPageProps) {
 
     let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const raced: any = await Promise.race([
+      const raced = await Promise.race([
         onSignIn(username.trim(), password, role),
-        new Promise<any>(resolve => {
+        new Promise<string>(resolve => {
           timeoutTimer = setTimeout(() => resolve(LOGIN_TIMEOUT), LOGIN_TIMEOUT_MS);
         }),
       ]);

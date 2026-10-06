@@ -35,32 +35,34 @@ export function useAuth() {
     loading: true,
   });
 
+  // Query profil — hanya satu tempat agar tidak dobel saat login maupun muat ulang.
+  const fetchProfile = useCallback(async (userId: string): Promise<Profile> => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name, jabatan, username, avatar_url')
+      .eq('user_id', userId)
+      .maybeSingle();
+    return data
+      ? { full_name: data.full_name, jabatan: data.jabatan, username: data.username || null, avatar_url: data.avatar_url || null }
+      : { full_name: null, jabatan: null, username: null, avatar_url: null };
+  }, []);
+
   const fetchProfileAndRole = useCallback(async (userId: string, knownIsAdmin?: boolean) => {
     // Saat login, peran sudah diverifikasi oleh signIn() → lewati query user_roles
     // kedua agar tidak ada fetch berlebih sebelum dashboard tampil.
     if (knownIsAdmin !== undefined) {
-      const profileRes = await supabase.from('profiles').select('full_name, jabatan, username, avatar_url' as any).eq('user_id', userId).maybeSingle();
-      const pData = profileRes.data as any;
-      const profile: Profile = pData
-        ? { full_name: pData.full_name, jabatan: pData.jabatan, username: pData.username || null, avatar_url: pData.avatar_url || null }
-        : { full_name: null, jabatan: null, username: null, avatar_url: null };
-      return { profile, isAdmin: knownIsAdmin };
+      return { profile: await fetchProfile(userId), isAdmin: knownIsAdmin };
     }
 
-    const [profileRes, roleRes] = await Promise.all([
-      supabase.from('profiles').select('full_name, jabatan, username, avatar_url' as any).eq('user_id', userId).maybeSingle(),
+    const [profile, roleRes] = await Promise.all([
+      fetchProfile(userId),
       supabase.from('user_roles').select('role').eq('user_id', userId),
     ]);
 
-    const pData = profileRes.data as any;
-    const profile: Profile = pData
-      ? { full_name: pData.full_name, jabatan: pData.jabatan, username: pData.username || null, avatar_url: pData.avatar_url || null }
-      : { full_name: null, jabatan: null, username: null, avatar_url: null };
-
-    const isAdmin = (roleRes.data || []).some((r: any) => r.role === 'admin');
+    const isAdmin = (roleRes.data || []).some(r => r.role === 'admin');
 
     return { profile, isAdmin };
-  }, []);
+  }, [fetchProfile]);
 
   useEffect(() => {
     let mounted = true;

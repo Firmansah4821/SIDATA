@@ -221,7 +221,7 @@ export default function AdminTable({ records, activeType, loading, onExport, onE
   // Apply calendar (date picker) filter — menyaring sesuai tanggal yang dipilih
   if (dateField && dateFilter) {
     filtered = filtered.filter(rec => {
-      const raw = (rec as any)[dateField];
+      const raw = rec[dateField];
       if (raw === undefined || raw === null || raw === '') return false;
       return String(raw).slice(0, 10) === dateFilter;
     });
