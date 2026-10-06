@@ -4,7 +4,7 @@ import { exportPDF, buildPdfColumns, buildRecordPdfFileName } from '@/lib/pdf-ex
 import { loadRecords, loadRecordsByType, deleteRecord, addRecord, updateRecord, getStats, loadStatsOnly, recomputeConflictsForDate } from '@/lib/sidata-store';
 import { exportToExcel, exportSingleToExcel } from '@/lib/excel-export';
 import { logAudit } from '@/lib/audit-logger';
-import { useIdleTimeout } from '@/hooks/useIdleTimeout';
+import { useIdleTimeout, markSessionExpired } from '@/hooks/useIdleTimeout';
 import AppHeader from '@/components/sidata/AppHeader';
 import Sidebar from '@/components/sidata/Sidebar';
 import StatsTable from '@/components/sidata/StatsTable';
@@ -79,6 +79,9 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
   const [editRecord, setEditRecord] = useState<SidataRecord | null>(null);
 
   useIdleTimeout(async () => {
+    // Tandai dulu agar halaman login bisa menampilkan pesan kedaluwarsa sesi,
+    // lalu tutup sesi (token/sesi di penyimpanan browser ikut dibersihkan).
+    markSessionExpired();
     await auth.signOut();
     showSidataToast('Sesi habis karena tidak aktif selama 15 menit', 'info');
   }, !!auth.user);
@@ -412,6 +415,7 @@ export default function AdminDashboard({ auth }: AdminDashboardProps) {
               records={records}
               loading={moduleDashboardLoading || (!loadedTypes.has(moduleDashboardType))}
               onBack={() => setView('admin-dashboard')}
+              rootLabel="Dashboard Admin"
             />
           )}
           {view === 'admin-kalender' && (

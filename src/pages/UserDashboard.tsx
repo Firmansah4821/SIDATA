@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { DataType, SidataRecord, typeLabels } from '@/lib/sidata-config';
 import { loadRecords, loadRecordsByType, addRecord, getStats, loadStatsOnly, recomputeConflictsForDate } from '@/lib/sidata-store';
 import { logAudit } from '@/lib/audit-logger';
-import { useIdleTimeout } from '@/hooks/useIdleTimeout';
+import { useIdleTimeout, markSessionExpired } from '@/hooks/useIdleTimeout';
 import AppHeader from '@/components/sidata/AppHeader';
 import Sidebar from '@/components/sidata/Sidebar';
 import StatsTable from '@/components/sidata/StatsTable';
@@ -37,6 +37,9 @@ export default function UserDashboard({ auth }: UserDashboardProps) {
   const [topbarSearch, setTopbarSearch] = useState('');
 
   useIdleTimeout(async () => {
+    // Tandai dulu agar halaman login bisa menampilkan pesan kedaluwarsa sesi,
+    // lalu tutup sesi (token/sesi di penyimpanan browser ikut dibersihkan).
+    markSessionExpired();
     await auth.signOut();
     showSidataToast('Sesi habis karena tidak aktif selama 15 menit', 'info');
   }, !!auth.user);
@@ -245,6 +248,7 @@ export default function UserDashboard({ auth }: UserDashboardProps) {
               records={records}
               loading={moduleDashboardLoading}
               onBack={() => setView('dashboard')}
+              rootLabel="Dashboard"
             />
           )}
           {view === 'kalender' && (
