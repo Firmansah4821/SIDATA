@@ -15,6 +15,7 @@ interface InputFormProps {
 }
 
 const MAX_FILE_SIZE_MB = 10;
+const MAX_FILES_PER_FIELD = 4;
 const MAX_IMAGE_WIDTH = 1920;
 const MAX_IMAGE_HEIGHT = 1920;
 const JPEG_QUALITY = 0.7;
@@ -279,10 +280,15 @@ export default function InputForm({ type, onSubmit, onBack, editRecord }: InputF
     if (errors[id]) setErrors(prev => { const n = { ...prev }; delete n[id]; return n; });
   };
 
-  const handleFileChange = async (id: string, fileList: FileList | null, multiple?: boolean) => {
+  const handleFileChange = async (id: string, fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return true;
-    if (multiple && fileList.length > 3) {
-      setErrors(prev => ({ ...prev, [id]: 'Maksimal 3 file yang dapat diunggah' }));
+    // Maksimal 4 file per kolom (termasuk file yang sudah dipilih sebelumnya).
+    const existing = processedFiles[id]?.length || 0;
+    if (existing + fileList.length > MAX_FILES_PER_FIELD) {
+      setErrors(prev => ({
+        ...prev,
+        [id]: `Maksimal ${MAX_FILES_PER_FIELD} file per kolom — file ke-${MAX_FILES_PER_FIELD + 1} dan seterusnya ditolak.`,
+      }));
       return false;
     }
     for (let i = 0; i < fileList.length; i++) {
@@ -316,23 +322,40 @@ export default function InputForm({ type, onSubmit, onBack, editRecord }: InputF
           previews.push({ name: file.name });
         }
       }
-      setProcessedFiles(prev => ({ ...prev, [id]: processed }));
-      setFilePreviews(prev => ({ ...prev, [id]: previews }));
+      // Tambahkan ke file yang sudah ada (bukan menimpa) agar bisa pilih berulang.
+      const prevUrls = processedFiles[id] || [];
+      const prevPreviews = filePreviews[id] || [];
+      setProcessedFiles(prev => ({ ...prev, [id]: [...prevUrls, ...processed] }));
+      setFilePreviews(prev => ({ ...prev, [id]: [...prevPreviews, ...previews] }));
       return true;
     } catch (err: any) {
       console.error('File processing error:', err);
       setErrors(prev => ({ ...prev, [id]: err.message || 'Gagal memproses file' }));
-      setFiles(prev => { const n = { ...prev }; delete n[id]; return n; });
       return false;
     } finally {
       setProcessingFiles(prev => { const n = { ...prev }; delete n[id]; return n; });
     }
   };
 
-  const removeFile = (id: string) => {
+  const removeFile = (id: string, index?: number) => {
+    if (index === undefined) {
+      setFiles(prev => { const n = { ...prev }; delete n[id]; return n; });
+      setProcessedFiles(prev => { const n = { ...prev }; delete n[id]; return n; });
+      setFilePreviews(prev => { const n = { ...prev }; delete n[id]; return n; });
+      return;
+    }
+    // Hapus per file (tetap simpan file lainnya)
     setFiles(prev => { const n = { ...prev }; delete n[id]; return n; });
-    setProcessedFiles(prev => { const n = { ...prev }; delete n[id]; return n; });
-    setFilePreviews(prev => { const n = { ...prev }; delete n[id]; return n; });
+    setProcessedFiles(prev => {
+      const cur = prev[id] || [];
+      if (cur.length <= 1) { const n = { ...prev }; delete n[id]; return n; }
+      return { ...prev, [id]: cur.filter((_, i) => i !== index) };
+    });
+    setFilePreviews(prev => {
+      const cur = prev[id] || [];
+      if (cur.length <= 1) { const n = { ...prev }; delete n[id]; return n; }
+      return { ...prev, [id]: cur.filter((_, i) => i !== index) };
+    });
   };
 
   const validateForm = (): boolean => {
@@ -483,11 +506,11 @@ export default function InputForm({ type, onSubmit, onBack, editRecord }: InputF
   };
 
   const getFileHelpText = (id: string) => {
-    if (id === 'dokumen_surat') return `📷 Kamera / 🖼️ Galeri — PDF, JPG, PNG, Excel (Maks. ${MAX_FILE_SIZE_MB}MB/file)`;
-    if (id === 'foto_perjalanan' || id === 'upload_file_rapat') return `📷 Kamera / 🖼️ Galeri — JPG, PNG, PDF, Excel (Maks. 3 file, ${MAX_FILE_SIZE_MB}MB/file)`;
-    if (id === 'foto_tamu') return `📷 Kamera / 🖼️ Galeri — JPG, PNG (Maks. 3 foto, ${MAX_FILE_SIZE_MB}MB/foto)`;
-    if (id === 'foto_sps_ttd') return `📷 Kamera / 🖼️ Galeri — JPG, PNG, PDF (Maks. ${MAX_FILE_SIZE_MB}MB)`;
-    return `📷 Kamera / 🖼️ Galeri — PDF, JPG, PNG (Maks. ${MAX_FILE_SIZE_MB}MB)`;
+    if (id === 'dokumen_surat') return `📷 Kamera / 🖼️ Galeri — PDF, JPG, PNG, Excel (Maks. ${MAX_FILES_PER_FIELD} file, ${MAX_FILE_SIZE_MB}MB/file)`;
+    if (id === 'foto_perjalanan' || id === 'upload_file_rapat') return `📷 Kamera / 🖼️ Galeri — JPG, PNG, PDF, Excel (Maks. ${MAX_FILES_PER_FIELD} file, ${MAX_FILE_SIZE_MB}MB/file)`;
+    if (id === 'foto_tamu') return `📷 Kamera / 🖼️ Galeri — JPG, PNG (Maks. ${MAX_FILES_PER_FIELD} foto, ${MAX_FILE_SIZE_MB}MB/foto)`;
+    if (id === 'foto_sps_ttd') return `📷 Kamera / 🖼️ Galeri — JPG, PNG, PDF (Maks. ${MAX_FILES_PER_FIELD} file, ${MAX_FILE_SIZE_MB}MB/file)`;
+    return `📷 Kamera / 🖼️ Galeri — PDF, JPG, PNG (Maks. ${MAX_FILES_PER_FIELD} file, ${MAX_FILE_SIZE_MB}MB/file)`;
   };
 
   const inputClass = "w-full px-4 py-2.5 border border-input rounded-xl text-sm bg-card text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring/10 transition-all";
@@ -561,12 +584,11 @@ export default function InputForm({ type, onSubmit, onBack, editRecord }: InputF
                       <input
                         type="file"
                         accept={getFileAccept(f)}
-                        capture={(['foto_tamu', 'foto_perjalanan', 'foto_sps_ttd'].includes(f.id)) ? 'environment' : undefined}
-                        multiple={f.multiple}
+                        multiple
                         disabled={processingFiles[f.id]}
                         onChange={async e => {
                           const target = e.target;
-                          const ok = await handleFileChange(f.id, target.files, f.multiple);
+                          const ok = await handleFileChange(f.id, target.files);
                           if (!ok) target.value = '';
                         }}
                         className="w-full min-w-0 text-sm text-foreground cursor-pointer focus:outline-none file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-1.5 file:text-xs file:font-semibold file:text-primary hover:file:bg-primary/20"
@@ -585,19 +607,30 @@ export default function InputForm({ type, onSubmit, onBack, editRecord }: InputF
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 text-xs text-success font-medium">
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>{filePreviews[f.id].length} file siap dikirim</span>
+                          <span>{filePreviews[f.id].length}/{MAX_FILES_PER_FIELD} file siap dikirim</span>
                         </div>
                         <button type="button" onClick={() => removeFile(f.id)} className="text-xs text-destructive hover:underline flex items-center gap-1">
-                          <X className="w-3 h-3" /> Hapus
+                          <X className="w-3 h-3" /> Hapus Semua
                         </button>
                       </div>
                       <div className="flex gap-2 flex-wrap">
                         {filePreviews[f.id].map((p, i) => (
-                          p.preview ? (
-                            <img key={i} src={p.preview} alt={p.name} className="w-16 h-16 object-cover rounded-lg border border-border" />
-                          ) : (
-                            <div key={i} className="px-2 py-1.5 bg-muted rounded-lg text-xs text-muted-foreground max-w-[180px] truncate" title={p.name}>📄 {p.name}</div>
-                          )
+                          <div key={i} className="relative">
+                            {p.preview ? (
+                              <img src={p.preview} alt={p.name} className="w-16 h-16 object-cover rounded-lg border border-border" />
+                            ) : (
+                              <div className="px-2 py-1.5 bg-muted rounded-lg text-xs text-muted-foreground max-w-[180px] truncate" title={p.name}>📄 {p.name}</div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeFile(f.id, i)}
+                              aria-label={`Hapus file ${p.name}`}
+                              title={`Hapus ${p.name}`}
+                              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:brightness-110 transition-all shadow"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
                         ))}
                       </div>
                     </div>

@@ -97,9 +97,9 @@ export const formFields: Record<DataType, FormField[]> = {
     { id: "perihal", label: "Perihal", type: "text" },
     { id: "tanggal_terima", label: "Tanggal Terima", type: "date" },
     { id: "jenis_surat", label: "Jenis Surat", type: "select", options: ["Langsung", "Tembusan", "Disposisi"] },
-    { id: "disposisi_kadis_sekdis", label: "Unggah Disposisi Kadis/Sekdis", type: "file", accept: ".pdf,.jpg,.jpeg,.png" },
+    { id: "disposisi_kadis_sekdis", label: "Unggah Disposisi Kadis/Sekdis", type: "file", accept: ".pdf,.jpg,.jpeg,.png", multiple: true },
     { id: "tanggapan_kabid", label: "Tanggapan Kabid", type: "select", options: ["Disposisi", "Arsip"] },
-    { id: "dokumen_surat", label: "Unggah Dokumen/Surat", type: "file", accept: ".pdf,.jpg,.jpeg,.png,.xls,.xlsx" },
+    { id: "dokumen_surat", label: "Unggah Dokumen/Surat", type: "file", accept: ".pdf,.jpg,.jpeg,.png,.xls,.xlsx", multiple: true },
     { id: "operator", label: "Operator", type: "text" },
   ],
   surat_keluar: [
@@ -110,7 +110,7 @@ export const formFields: Record<DataType, FormField[]> = {
     { id: "perihal", label: "Perihal", type: "text" },
     { id: "tanggal_kirim", label: "Tanggal Kirim", type: "date" },
     { id: "jenis_surat", label: "Jenis Surat", type: "select", options: ["Biasa", "Edaran", "Undangan", "Pengantar", "Keputusan", "Lainnya"] },
-    { id: "dokumen_surat", label: "Unggah Dokumen/Surat", type: "file", accept: ".pdf,.jpg,.jpeg,.png,.xls,.xlsx" },
+    { id: "dokumen_surat", label: "Unggah Dokumen/Surat", type: "file", accept: ".pdf,.jpg,.jpeg,.png,.xls,.xlsx", multiple: true },
     { id: "operator", label: "Operator", type: "text" },
   ],
   buku_tamu: [
@@ -147,7 +147,7 @@ export const formFields: Record<DataType, FormField[]> = {
     { id: "desa_bpn", label: "Desa", type: "dependent_select", dependsOn: "kecamatan_bpn", dependentOptions: desaByKecamatan },
     { id: "pemohon_bpn", label: "Pemohon", type: "text" },
     { id: "keterangan_bpn", label: "Keterangan", type: "textarea" },
-    { id: "foto_sps_ttd", label: "Unggah Foto SPS dan TTD", type: "file", accept: ".jpg,.jpeg,.png,.pdf" },
+    { id: "foto_sps_ttd", label: "Unggah Foto SPS dan TTD", type: "file", accept: ".jpg,.jpeg,.png,.pdf", multiple: true },
   ],
   perjalanan_dinas: [
     { id: "tanggal_perjalanan", label: "Tanggal Perjalanan", type: "date" },

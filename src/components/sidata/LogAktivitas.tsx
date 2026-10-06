@@ -13,9 +13,11 @@ import {
   Download,
   AlertTriangle,
   Info,
+  X,
 } from 'lucide-react';
 import { LOG_SETUP_SQL } from '@/lib/log-aktivitas-setup';
 import { downloadTextFile } from '@/lib/sidata-backup';
+import { typeLabels, formFields, getSummary, type DataType, type SidataRecord } from '@/lib/sidata-config';
 
 const setupPrimaryBtn =
   'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:opacity-90 transition-opacity';
@@ -87,6 +89,118 @@ function formatWaktu(value: unknown): string {
   });
 }
 
+// ── Humanisasi TABEL & DETAIL (tampilan saja, data DB tidak diubah) ──────
+const TABLE_LABELS: Record<string, string> = {
+  sidata_records: 'Data SIDATA',
+  profiles: 'Profil Pengguna',
+  user_roles: 'Peran Pengguna',
+  audit_logs: 'Log Audit',
+  log_aktivitas: 'Log Aktivitas',
+};
+
+function humanizeKey(key: string): string {
+  return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function typeLabelOf(key: unknown): string | null {
+  const k = String(key ?? '').trim();
+  if (!k) return null;
+  return (typeLabels as Record<string, string>)[k] || null;
+}
+
+interface ParsedDetail {
+  recordType: string | null;
+  recordId: string | null;
+  obj: Record<string, unknown> | null;
+  text: string | null;
+}
+
+function parseDetail(v: unknown): ParsedDetail {
+  const empty: ParsedDetail = { recordType: null, recordId: null, obj: null, text: null };
+  if (v === null || v === undefined || v === '') return empty;
+  if (typeof v === 'string') {
+    const s = v.trim();
+    if (s.startsWith('{') || s.startsWith('[')) {
+      try {
+        return parseDetail(JSON.parse(s));
+      } catch {
+        return { ...empty, text: s };
+      }
+    }
+    return { ...empty, text: s };
+  }
+  if (typeof v === 'object') {
+    if (Array.isArray(v)) return { ...empty, text: JSON.stringify(v) };
+    const o = v as Record<string, unknown>;
+    const rt = o.record_type ?? o.type ?? null;
+    const rid = o.record_id ?? o.id ?? null;
+    return {
+      recordType: rt !== null && rt !== undefined && rt !== '' ? String(rt) : null,
+      recordId: rid !== null && rid !== undefined && rid !== '' ? String(rid) : null,
+      obj: o,
+      text: null,
+    };
+  }
+  return { ...empty, text: String(v) };
+}
+
+/** Nama tabel/manusia: surat_masuk → "Surat Masuk", sidata_records → label dari record_type. */
+function tableLabelOf(rawTable: unknown, recordType: string | null): string {
+  const fromRecord = typeLabelOf(recordType);
+  if (fromRecord) return fromRecord;
+  const raw = String(rawTable ?? '').trim();
+  if (!raw) return '—';
+  const known = typeLabelOf(raw);
+  if (known) return known;
+  if (TABLE_LABELS[raw]) return TABLE_LABELS[raw];
+  return humanizeKey(raw);
+}
+
+function fieldLabelOf(recordType: string | null, key: string): string {
+  const fields = (formFields[(recordType || '') as DataType] || []);
+  const f = fields.find(x => x.id === key);
+  if (f) return f.label;
+  return humanizeKey(key);
+}
+
+function fmtVal(v: unknown): string {
+  if (v === null || v === undefined || v === '') return '(kosong)';
+  const s = String(v).trim();
+  return s.length > 60 ? `${s.slice(0, 57)}…` : s;
+}
+
+/** Daftar field berubah bila detail memuat data perubahan (changes/old_values+new_values). */
+function extractChanges(obj: Record<string, unknown> | null): { field: string; before: unknown; after: unknown }[] {
+  const out: { field: string; before: unknown; after: unknown }[] = [];
+  if (!obj) return out;
+  const push = (field: string, before: unknown, after: unknown) => out.push({ field, before, after });
+  const changes = obj.changes || obj.changed || obj.diff || obj.perubahan || null;
+  if (changes && typeof changes === 'object' && !Array.isArray(changes)) {
+    for (const [k, v] of Object.entries(changes as Record<string, unknown>)) {
+      if (Array.isArray(v)) push(k, v[0], v[1]);
+      else if (v && typeof v === 'object') {
+        const vo = v as Record<string, unknown>;
+        const before = 'from' in v ? vo.from : 'old' in v ? vo.old : 'before' in v ? vo.before : vo.lama;
+        const after = 'to' in v ? vo.to : 'new' in v ? vo.new : 'after' in v ? vo.after : vo.baru;
+        push(k, before, after);
+      } else push(k, undefined, v);
+    }
+  }
+  const oldV = obj.old_values || obj.old || obj.sebelum || null;
+  const newV = obj.new_values || obj.new || obj.sesudah || null;
+  if (oldV && newV && typeof oldV === 'object' && typeof newV === 'object') {
+    const oldObj = oldV as Record<string, unknown>;
+    const newObj = newV as Record<string, unknown>;
+    const keys = Array.from(new Set([...Object.keys(oldObj), ...Object.keys(newObj)]));
+    for (const k of keys) {
+      if (JSON.stringify(oldObj[k]) !== JSON.stringify(newObj[k])) {
+        push(k, oldObj[k], newObj[k]);
+      }
+    }
+  }
+  return out;
+}
+
 export default function LogAktivitas() {
   const [schema, setSchema] = useState<Schema | null>(null);
   const [rows, setRows] = useState<Record<string, any>[]>([]);
@@ -102,6 +216,8 @@ export default function LogAktivitas() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [setupNeeded, setSetupNeeded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [recordSummaries, setRecordSummaries] = useState<Record<string, string>>({});
+  const [selectedRow, setSelectedRow] = useState<Record<string, unknown> | null>(null);
 
   /** Probe skema + muat opsi filter + peta nama profil (sekali di awal / refresh). */
   const init = useCallback(async () => {
@@ -264,6 +380,48 @@ export default function LogAktivitas() {
       }
       setRows(res.data || []);
       setTotal(res.count || 0);
+
+      // Ringkasan record terkait (tampilan saja) supaya kolom DETAIL terbaca manusia.
+      // Satu query per halaman; record yang sudah dihapus dilewati.
+      if (schema.detail) {
+        const pageRows = (res.data || []) as Record<string, unknown>[];
+        const ids = Array.from(
+          new Set(
+            pageRows
+              .map(r => parseDetail(r[schema.detail!]).recordId)
+              .filter((v): v is string => Boolean(v))
+          )
+        ).slice(0, 30);
+        if (ids.length === 0) {
+          setRecordSummaries({});
+        } else {
+          try {
+            const rec = await supabase
+              .from('sidata_records')
+              .select('id, type, data')
+              .in('id', ids);
+            const map: Record<string, string> = {};
+            (rec.data || []).forEach(r => {
+              try {
+                const raw = r.data;
+                const d = (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) as Record<string, unknown>;
+                const full = {
+                  ...d,
+                  id: r.id,
+                  type: r.type || (typeof d.type === 'string' ? d.type : ''),
+                } as unknown as SidataRecord;
+                const s = getSummary(full);
+                map[r.id] = /^[-|\s]*$/.test(s) ? '' : s;
+              } catch {
+                /* ringkasan tidak wajib */
+              }
+            });
+            setRecordSummaries(map);
+          } catch {
+            setRecordSummaries({});
+          }
+        }
+      }
     } catch (e: any) {
       if (isTableMissing(e)) {
         setSetupNeeded(true);
@@ -427,17 +585,40 @@ export default function LogAktivitas() {
 
   const detailText = (row: Record<string, any>): string => {
     if (!schema?.detail) return '—';
-    const v = row[schema.detail];
-    if (v === null || v === undefined || v === '') return '—';
-    if (typeof v === 'object') {
-      try {
-        return JSON.stringify(v);
-      } catch {
-        return String(v);
-      }
+    const d = parseDetail(row[schema.detail]);
+    const action = actionLabel(schema?.action ? row[schema.action] : null);
+    const label = tableLabelOf(schema?.table ? row[schema.table] : null, d.recordType);
+    const summary = d.recordId ? recordSummaries[d.recordId] : '';
+
+    // Ubah: tampilkan hanya field yang berubah (bila data perubahan tersimpan di detail)
+    const changes = extractChanges(d.obj);
+    if (changes.length > 0) {
+      const parts = changes
+        .slice(0, 3)
+        .map(c => `${fieldLabelOf(d.recordType, c.field)}: ${fmtVal(c.before)} → ${fmtVal(c.after)}`);
+      const more = changes.length > 3 ? ` (+${changes.length - 3} perubahan lain)` : '';
+      return `Ubah ${label}: ${parts.join('; ')}${more}`;
     }
-    return String(v);
+
+    if (action === 'Tambah') {
+      return summary ? `Tambah ${label}: ${summary}` : d.text ? `Tambah ${label}: ${d.text}` : `Tambah ${label}`;
+    }
+    if (action === 'Ubah') {
+      return summary ? `Ubah ${label}: ${summary}` : d.text ? `Ubah ${label}: ${d.text}` : `Ubah ${label}`;
+    }
+    if (action === 'Hapus') {
+      return summary ? `Hapus ${label}: ${summary}` : `Hapus ${label}: data sudah dihapus`;
+    }
+    if (d.text) return `${action}: ${d.text}`;
+    if (d.obj) return `${action} ${label}`;
+    return '—';
   };
+
+  const tableLabelForRow = (row: Record<string, unknown>): string =>
+    tableLabelOf(
+      schema?.table ? row[schema.table] : null,
+      schema?.detail ? parseDetail(row[schema.detail]).recordType : null
+    );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const fromNo = total === 0 ? 0 : page * PAGE_SIZE + 1;
@@ -595,13 +776,15 @@ export default function LogAktivitas() {
                 {rows.map((row, i) => {
                   const rawAction = schema?.action ? row[schema.action] : null;
                   const rawRole = schema?.role ? row[schema.role] : null;
-                  const rawTable = schema?.table ? row[schema.table] : null;
                   const rawTime = schema?.time ? row[schema.time] : null;
                   const detail = detailText(row);
+                  const tableLabel = tableLabelForRow(row);
                   return (
                     <tr
                       key={(schema?.id && row[schema.id]) || `${page}-${i}`}
-                      className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                      onClick={() => setSelectedRow(row)}
+                      title="Klik untuk detail lengkap"
+                      className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer"
                     >
                       <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
                         {page * PAGE_SIZE + i + 1}
@@ -621,7 +804,7 @@ export default function LogAktivitas() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
-                        {rawTable ? String(rawTable) : '—'}
+                        {tableLabel}
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground max-w-[260px] truncate" title={detail}>
                         {detail}
@@ -659,6 +842,66 @@ export default function LogAktivitas() {
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bonus: modal detail saat baris diklik */}
+      {selectedRow && (
+        <div
+          className="fixed inset-0 z-[1200] flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4 animate-fade-in"
+          onClick={() => setSelectedRow(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Detail aktivitas"
+        >
+          <div
+            className="bg-card rounded-2xl shadow-2xl border border-border max-w-lg w-full overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/30">
+              <h3 className="text-base font-bold text-foreground">Detail Aktivitas</h3>
+              <button
+                type="button"
+                onClick={() => setSelectedRow(null)}
+                aria-label="Tutup detail aktivitas"
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-3 text-sm">
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Waktu</span>
+                <span className="text-foreground text-right tabular-nums">
+                  {formatWaktu(schema?.time ? selectedRow[schema.time] : null)}
+                </span>
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pengguna</span>
+                <span className="text-foreground text-right">{displayName(selectedRow)}</span>
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role</span>
+                <span className="text-foreground text-right">
+                  {schema?.role && selectedRow[schema.role] ? String(selectedRow[schema.role]) : '—'}
+                </span>
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Aksi</span>
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${actionBadge(schema?.action ? selectedRow[schema.action] : null)}`}>
+                  {actionLabel(schema?.action ? selectedRow[schema.action] : null)}
+                </span>
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tabel</span>
+                <span className="text-foreground text-right">{tableLabelForRow(selectedRow)}</span>
+              </div>
+              <div className="flex items-start gap-4 pt-1 border-t border-border">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground shrink-0 mt-0.5">Detail</span>
+                <span className="text-foreground text-right leading-relaxed">{detailText(selectedRow)}</span>
               </div>
             </div>
           </div>
