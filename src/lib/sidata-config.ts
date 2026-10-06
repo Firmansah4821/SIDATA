@@ -136,6 +136,7 @@ export const formFields: Record<DataType, FormField[]> = {
     { id: "kode_kategori", label: "Kode A/B/C/D/E", type: "text" },
     { id: "kode_tahun", label: "Kode Tahun", type: "number" },
     { id: "kode_urutan", label: "Kode Urutan", type: "number" },
+    { id: "lampiran_inventaris", label: "Unggah Dokumen", type: "file", accept: ".pdf,.jpg,.jpeg,.png,.xls,.xlsx", multiple: true },
   ],
   pengajuan_bpn: [
     { id: "jenis_pengajuan", label: "Jenis Pengajuan", type: "select", options: ["Sertipikat Pertama Kali", "Pengapusan/Pelepasan Hak", "Pengukuran", "Ganti Hilang", "SKPT"] },

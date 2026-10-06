@@ -133,6 +133,7 @@ const SECTION_PLANS: Partial<Record<DataType, { title: string; Icon: LucideIcon;
     { title: 'Informasi Dokumen', Icon: FileText, ids: ['tanggal_input', 'kategori_dokumen', 'asal_dokumen', 'perihal_dokumen', 'tanggal_dokumen'] },
     { title: 'Lokasi & Status', Icon: MapPin, ids: ['lokasi_dokumen', 'desa_dokumen', 'status_dokumen'] },
     { title: 'Kode Dokumen', Icon: Hash, ids: ['kode_kategori', 'kode_tahun', 'kode_urutan'] },
+    { title: 'Dokumen', Icon: Paperclip, ids: ['lampiran_inventaris'] },
   ],
   pengajuan_bpn: [
     { title: 'Informasi Pengajuan', Icon: FileText, ids: ['jenis_pengajuan', 'nomor_berkas_sps', 'tahun_berkas_sps', 'tanggal_terbit_sps'] },
