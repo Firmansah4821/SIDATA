@@ -1,3 +1,6 @@
+# TypeScript incremental build cache
+*.tsbuildinfo
+
 # Logs
 logs
 *.log
