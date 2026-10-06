@@ -52,7 +52,7 @@ export default function StatsTable({ stats, onSelectType }: StatsTableProps) {
               <p className="mt-4 text-[26px] leading-none font-extrabold text-foreground tabular-nums">{item.value}</p>
               <p className="mt-2 text-[13px] font-medium text-muted-foreground leading-snug">{item.name}</p>
             </div>
-            <span className="absolute top-4 right-4 z-[2] text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="absolute top-4 right-4 z-[2] text-[10px] font-bold text-primary">
               Grafik →
             </span>
           </button>
