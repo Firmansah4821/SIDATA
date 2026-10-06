@@ -9,7 +9,7 @@ import type { User, Session } from '@supabase/supabase-js';
 // setelah verifikasi lolos.
 let loginVerificationPending = false;
 let heldSessionDuringVerification: Session | null = null;
-let applySessionToState: ((session: Session) => Promise<void>) | null = null;
+let applySessionToState: ((session: Session, knownIsAdmin?: boolean) => Promise<void>) | null = null;
 
 export interface Profile {
   full_name: string | null;
@@ -35,7 +35,18 @@ export function useAuth() {
     loading: true,
   });
 
-  const fetchProfileAndRole = useCallback(async (userId: string) => {
+  const fetchProfileAndRole = useCallback(async (userId: string, knownIsAdmin?: boolean) => {
+    // Saat login, peran sudah diverifikasi oleh signIn() → lewati query user_roles
+    // kedua agar tidak ada fetch berlebih sebelum dashboard tampil.
+    if (knownIsAdmin !== undefined) {
+      const profileRes = await supabase.from('profiles').select('full_name, jabatan, username, avatar_url' as any).eq('user_id', userId).maybeSingle();
+      const pData = profileRes.data as any;
+      const profile: Profile = pData
+        ? { full_name: pData.full_name, jabatan: pData.jabatan, username: pData.username || null, avatar_url: pData.avatar_url || null }
+        : { full_name: null, jabatan: null, username: null, avatar_url: null };
+      return { profile, isAdmin: knownIsAdmin };
+    }
+
     const [profileRes, roleRes] = await Promise.all([
       supabase.from('profiles').select('full_name, jabatan, username, avatar_url' as any).eq('user_id', userId).maybeSingle(),
       supabase.from('user_roles').select('role').eq('user_id', userId),
@@ -59,14 +70,14 @@ export function useAuth() {
       setState({ user: null, session: null, profile: null, isAdmin: false, loading: false });
     };
 
-    const setAuthed = async (session: Session) => {
+    const setAuthed = async (session: Session, knownIsAdmin?: boolean) => {
       try {
         const profileTimeout = new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('profile_timeout')), 5000)
         );
 
         const { profile, isAdmin } = await Promise.race([
-          fetchProfileAndRole(session.user.id),
+          fetchProfileAndRole(session.user.id, knownIsAdmin),
           profileTimeout,
         ]);
 
@@ -171,7 +182,7 @@ export function useAuth() {
         const { data: current } = await supabase.auth.getSession();
         session = current.session;
       }
-      if (session && applySessionToState) await applySessionToState(session);
+      if (session && applySessionToState) await applySessionToState(session, isAdminUser);
       return null;
     } finally {
       loginVerificationPending = false;

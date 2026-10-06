@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Eye, EyeOff, Loader2, User, Lock, ArrowRight, AlertCircle, ChevronDown, UserCog } from 'lucide-react';
+import { consumeSessionExpired } from '@/hooks/useIdleTimeout';
 import logoBima from '@/assets/logo-bima.png';
 
 interface AuthPageProps {
   onSignIn: (username: string, password: string, role?: 'admin' | 'operator') => Promise<any>;
 }
+
+// Batas waktu tunggu proses login — agar tidak pernah menggantung tanpa umpan balik.
+const LOGIN_TIMEOUT_MS = 10000;
+const LOGIN_TIMEOUT = '__LOGIN_TIMEOUT__';
 
 export default function AuthPage({ onSignIn }: AuthPageProps) {
   const [username, setUsername] = useState('');
@@ -13,10 +18,17 @@ export default function AuthPage({ onSignIn }: AuthPageProps) {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  // Pesan auto-logout 15 menit tidak aktif — tampilkan sekali di halaman login.
+  useEffect(() => {
+    if (consumeSessionExpired()) setSessionExpired(true);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSessionExpired(false);
 
     // Belum memilih peran: tampilkan pesan tanpa memanggil autentikasi.
     if (!role) {
@@ -26,8 +38,21 @@ export default function AuthPage({ onSignIn }: AuthPageProps) {
 
     setLoading(true);
 
+    let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const err = await onSignIn(username.trim(), password, role);
+      const raced: any = await Promise.race([
+        onSignIn(username.trim(), password, role),
+        new Promise<any>(resolve => {
+          timeoutTimer = setTimeout(() => resolve(LOGIN_TIMEOUT), LOGIN_TIMEOUT_MS);
+        }),
+      ]);
+
+      if (raced === LOGIN_TIMEOUT) {
+        setError('Server sedang sibuk, silakan coba lagi');
+        return;
+      }
+
+      const err = raced;
       if (err) {
         if (err.message === 'ROLE_MISMATCH') {
           const actual: 'admin' | 'operator' = err.actualRole ?? (role === 'admin' ? 'operator' : 'admin');
@@ -44,6 +69,7 @@ export default function AuthPage({ onSignIn }: AuthPageProps) {
         }
       }
     } finally {
+      if (timeoutTimer) clearTimeout(timeoutTimer);
       setLoading(false);
     }
   };
@@ -68,6 +94,16 @@ export default function AuthPage({ onSignIn }: AuthPageProps) {
           {/* ── Login (navy) ── */}
           <div className="login-panel px-7 pt-5 pb-6">
             <p className="text-[11px] font-bold tracking-[0.28em] text-slate-400 mb-4">LOGIN</p>
+
+            {sessionExpired && (
+              <div
+                className="flex items-start gap-2.5 p-3 rounded-xl text-[13px] font-medium bg-amber-500/15 text-amber-200 border border-amber-400/25 mb-1"
+                role="status"
+              >
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-300" />
+                <span>Sesi berakhir karena tidak ada aktivitas, silakan login kembali</span>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="relative">
